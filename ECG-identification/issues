@@ -1,0 +1,9 @@
+1. input_shape(3,224,224) --> (224,224,3)
+
+np.swapaxes(x,1,3)
+np.swapaxes(x,2,3)
+(sample,channel,row,column)
+
+2. do I need to add ReduceLROnPlateau in VGG?
+
+
