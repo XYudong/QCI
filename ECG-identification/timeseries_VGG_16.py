@@ -9,7 +9,11 @@ from keras.layers.core import Flatten, Dense, Dropout, Activation
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.optimizers import SGD
 from keras.callbacks import ReduceLROnPlateau
+from keras.preprocessing import image
 from pyts.image import GASF, MTF, RecurrencePlots
+
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
 
 import cv2
 import numpy as np
@@ -22,14 +26,13 @@ np.random.seed(813306)
 def readucr(filename):
     data = np.loadtxt(filename, delimiter=',')
     #print(data[0:100])
-    Y = data[:,0]
-    X = data[:,1:]
+    Y = data[:, 0]
+    X = data[:, 1:]
     #print(X[0:100])
     return X, Y
 
-def loaddataset():
+def loaddataset(fname='ECG200'):
     root = "../data/"
-    fname = 'ECG200'
     x_train, y_train = readucr(root+fname+'/'+fname+'/'+fname+'_TRAIN.txt')
     x_test, y_test = readucr(root+fname+'/'+fname+'/'+fname+'_TEST.txt')
     return x_train,y_train,x_test,y_test
@@ -54,52 +57,43 @@ def to_rgb(img):
     return img_rgb
 
 def VGG_16_new():
-    model = VGG16(include_top=False, input_shape=(224,224,3), weights='imagenet', pooling=None)
+    model = VGG16(include_top=False, input_shape=(224,224,3), weights='imagenet')
     # to freeze weights of feature extraction layers
-    for i in [0,1, 3,4, 6,7,8, 10,11,12, 14,15,16]:
-        model.layers[i].trainable = False
+    # for i in [0,1, 3,4, 6,7,8, 10,11,12, 14,15,16]:
+    #   model.layers[i].trainable = False
 
+    # Fine-tuning: freeze some layers
+    for layer in model.layers[:-4]:
+        layer.trainable = False
+    # for layer in model.layers:
+    #     print(layer, layer.trainable)
+
+    # print('outputs: ', model.outputs)
     # rebuild the model
     pool5 = Flatten(name='flatten')(model.outputs)
 
     dense_1 = Dense(128, name='dense_1', activation='relu')(pool5)
-    d1 = Dropout(0.05)(dense_1)
+    d1 = Dropout(0.5)(dense_1)
 
     dense_2 = Dense(128, name='dense_2', activation='relu')(d1)
-    d2 = Dropout(0.05)(dense_2)
+    d2 = Dropout(0.5)(dense_2)
 
     dense_3 = Dense(2, name='dense_3')(d2)
     # prediction = Activation("softmax", name="softmax")(dense_3)
     prediction = Activation("sigmoid", name="sigmoid")(dense_3)
 
     model_new = Model(inputs=model.inputs, outputs=prediction)
-
-    #two optimizers for choice
-    adam = keras.optimizers.Adam()
-    sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-
-    model_new.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
-
+    model_new.summary()
     return model_new
 
-def normalization(x_train,y_train,x_test,y_test):
-    nb_classes = len(np.unique(y_test))
-    print("number of classes:", nb_classes)
-
-    # transform raw class vector to integers from 0 to num_classes
-    y_train = (y_train - y_train.min()) / (y_train.max() - y_train.min()) * (nb_classes - 1)
-    y_test = (y_test - y_test.min()) / (y_test.max() - y_test.min()) * (nb_classes - 1)
-
-    # Converts a class vector (integers) to binary class matrix, because of the use of loss='categorical_crossentropy'.
-    Y_train = np_utils.to_categorical(y_train, nb_classes)
-    Y_test = np_utils.to_categorical(y_test, nb_classes)
+def data_normalization(x_train,x_test):
 
     x_train_mean = x_train.mean()
     x_train_std = x_train.std()
-    x_train = (x_train - x_train_mean) / (x_train_std)
-    x_test = (x_test - x_train_mean) / (x_train_std)
+    x_train = (x_train - x_train_mean) / x_train_std
+    x_test = (x_test - x_train_mean) / x_train_std
 
-    return x_train,Y_train,x_test,Y_test
+    return x_train, x_test
 
 def plt_acc_loss(hist):
     # summarize history for accuracy
@@ -123,11 +117,17 @@ def plt_acc_loss(hist):
     plt.show()
     return True
 
+def prepare_data(pre_data):
+    # transform the output from timeseries-method to standard VGG input format
+    x_rgb = []
+    for img in pre_data:
+        img_rgb = to_rgb(img)
+        temp = cv2.resize(img_rgb, (224, 224)).astype(np.float32)
+        x_rgb.append(temp)
+    x_rgb = np.array(x_rgb)
+    return x_rgb
 
-def train_model(method ='gasf', arg_times=1, epochs=50):
-    x_train,y_train,x_test,y_test = loaddataset()
-    # x_train,y_train = white_noise_augmentation(x_train, y_train, arg_times)
-
+def transform_to_2D(method, x_train, x_test):
     if method == 'gasf':
         gasf = GASF(image_size=x_train.shape[1]//2, overlapping=False, scale=-1)
         x_tr = gasf.fit_transform(x_train)
@@ -144,48 +144,117 @@ def train_model(method ='gasf', arg_times=1, epochs=50):
         x_te = rp.fit_transform(x_test)
         print('applying RP')
 
-    x_train_rgb = []
-    for img in x_tr:
-        img_rgb = to_rgb(img)
-        im_tr = cv2.resize(img_rgb, (224, 224)).astype(np.float32)
-        x_train_rgb.append(im_tr)
-    x_train_rgb = np.array(x_train_rgb)
+    return x_tr, x_te
+
+def transform_label(y):
+    nb_classes = len(np.unique(y))
+    print("number of classes:", nb_classes)
+
+    # transform raw class vector to integers from 0 to num_classes
+    y = (y - y.min()) / (y.max() - y.min()) * (nb_classes - 1)
+    # Converts a class vector (integers) to binary class matrix, because of the use of loss='categorical_crossentropy'.
+    Y = np_utils.to_categorical(y, nb_classes)
+
+    return Y
+
+def train_model(method ='gasf', arg_times=1, epochs=50):
+    x_train,y_train,x_test,y_test = loaddataset()
+    # x_train,y_train = white_noise_augmentation(x_train, y_train, arg_times)
+
+    x_tr, x_te = transform_to_2D(method, x_train, x_test)
+    x_train_rgb = prepare_data(x_tr)
+    x_test_rgb = prepare_data(x_te)
 
     # (sample, row, column, channel), i.e.(100*arg_times,224,224,3)
     # print('train set:', x_train_rgb.shape)
-
-    x_test_rgb = []
-    for img in x_te:
-        img_rgb = to_rgb(img)
-        im_te = cv2.resize(img_rgb, (224, 224)).astype(np.float32)
-        x_test_rgb.append(im_te)
-    x_test_rgb = np.array(x_test_rgb)
     # print('test set:', x_test_rgb.shape)
 
-    x_train_rgb, Y_train, x_test_rgb, Y_test = normalization(x_train_rgb, y_train, x_test_rgb, y_test)
-    # print('normalized test set:', x_test_rgb.shape)
+    x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
+    print('normalized test set:', x_test_rgb.shape)
+
+    Y_train = transform_label(y_train)
+    Y_test = transform_label(y_test)
+
     batch_size = min(int(x_train_rgb.shape[0] / 10), 16)
-    print(batch_size)
-    model = VGG_16_new()    # already complied
+    print('batch size: ', batch_size)
 
-    reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=50, min_lr=0.0001)
+    # create a model
+    model_new = VGG_16_new()
 
-    print("start training....")
-    print(x_train_rgb.shape, Y_train.shape)
-    print(x_test_rgb.shape, Y_test.shape)
+    # print(x_train_rgb.shape, Y_train.shape)
+    # print(x_test_rgb.shape, Y_test.shape)
     # file = open('debug_data', 'a+')
     # file.write(str(Y_train)+'\n')
     # file.write(str(Y_test)+'\n')
 
-    hist = model.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
-                     verbose=2, validation_data=(x_test_rgb, Y_test))
+    #two optimizers for choice
+    adam = keras.optimizers.Adam()
+    sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+
+    model_new.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
+
+    reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.001)
+
+    print("start training....")
+    hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
+                         verbose=2, validation_data=(x_test_rgb, Y_test), callbacks=[reduce_lr])
     #
     # plt_acc_loss(hist)
     # return hist
     return True
 
+def extractor(fname='ECG200', method='mtf'):
+    # Feature extraction
+    model = VGG16(include_top=True, weights='imagenet')
+    # to get the feature vector of FC1
+    model_fea = Model(inputs=model.inputs, outputs=model.get_layer(name='fc1').output)
 
-hist = train_model(method='mtf', arg_times=1, epochs=50)
+    # model.summary()
+    x_train, y_train, x_test, y_test = loaddataset(fname)
+
+    x_tr, x_te = transform_to_2D(method, x_train, x_test)
+    x_train_rgb = prepare_data(x_tr)
+    x_test_rgb = prepare_data(x_te)     # output array
+    x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
+    # print(x_train_rgb.shape)  # (100,224,224,3)
+    file = open(fname+'_fc1_features_train.txt', 'a+')
+    file2 = open(fname+'_fc1_features_test.txt', 'a+')
+
+    for i in range(x_train_rgb.shape[0]):
+        img = x_train_rgb[i]
+        img = np.expand_dims(img, axis=0)
+        img = preprocess_input(img)
+        # write labels
+        file.write(str(y_train[i])+' ')
+        # write feature vector
+        fc1_features = model_fea.predict(img)
+        for value in fc1_features[0]:
+            file.write(str(value)+' ')
+        file.write('\n')
+    file.close()
+
+    for i in range(x_test_rgb.shape[0]):
+        img = x_test_rgb[i]
+        img = np.expand_dims(img, axis=0)
+        img = preprocess_input(img)
+        file2.write(str(y_test[i])+' ')
+        fc1_features = model_fea.predict(img)
+        for value in fc1_features[0]:
+            file2.write(str(value) + ' ')
+        file2.write('\n')
+    file2.close()
+    return True
+
+
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+# config.log_device_placement = True  # to log device placement (on which device the operation ran)
+sess = tf.Session(config=config)
+set_session(sess)  # set this TensorFlow session as the default session for Keras
+
+# hist = train_model(method='mtf', arg_times=1, epochs=50)
+
+extractor('ECG5000')
 
 
 
