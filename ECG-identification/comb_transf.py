@@ -21,23 +21,24 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-
-
 np.random.seed(813306)
+
 
 def readucr(filename):
     data = np.loadtxt(filename, delimiter=',')
-    #print(data[0:100])
+    # print(data[0:100])
     Y = data[:, 0]
     X = data[:, 1:]
-    #print(X[0:100])
+    # print(X[0:100])
     return X, Y
+
 
 def loaddataset(fname='ECG200'):
     root = "../data/"
-    x_train, y_train = readucr(root+fname+'/'+fname+'/'+fname+'_TRAIN.txt')
-    x_test, y_test = readucr(root+fname+'/'+fname+'/'+fname+'_TEST.txt')
-    return x_train,y_train,x_test,y_test
+    x_train, y_train = readucr(root + fname + '/' + fname + '/' + fname + '_TRAIN.txt')
+    x_test, y_test = readucr(root + fname + '/' + fname + '/' + fname + '_TEST.txt')
+    return x_train, y_train, x_test, y_test
+
 
 def white_noise_augmentation(x, y, times=1):
     # augmentation of 1D data
@@ -52,11 +53,13 @@ def white_noise_augmentation(x, y, times=1):
         # print(x.shape, y.shape)
     return x, y
 
+
 def to_rgb(img):
     # transform to rgb-style(i.e. 3 channels)
     img = np.resize(img, (*img.shape, 1))
     img_rgb = np.repeat(img.astype(np.float32), 3, axis=2)
     return img_rgb
+
 
 def VGG_16_new():
     model = VGG16(include_top=False, input_shape=(224, 224, 3), weights='imagenet')
@@ -100,8 +103,8 @@ def VGG_16_new():
     # model_new.summary()
     return model_new
 
-def data_normalization(x_train,x_test):
 
+def data_normalization(x_train, x_test):
     x_train_mean = x_train.mean()
     x_train_std = x_train.std()
     x_train = (x_train - x_train_mean) / x_train_std
@@ -109,9 +112,10 @@ def data_normalization(x_train,x_test):
 
     return x_train, x_test
 
+
 def plt_acc_loss(hist):
     # summarize history for accuracy
-    plt.figure(1, figsize=(8,8))
+    plt.figure(1, figsize=(8, 8))
     plt.plot(hist.history['acc'], c='dodgerblue')
     plt.plot(hist.history['val_acc'], c='r')
     plt.title('Model accuracy')
@@ -131,34 +135,39 @@ def plt_acc_loss(hist):
     plt.show()
     return True
 
-def prepare_data(pre_data):
+
+def prepare_data(x_tr1, x_tr2, x_tr3):
     # transform the output from timeseries-method to standard VGG input format
     x_rgb = []
-    for img in pre_data:
-        img_rgb = to_rgb(img)
-        temp = cv2.resize(img_rgb, (224, 224)).astype(np.float32)
-        x_rgb.append(temp)
+    for i in range(len(x_tr1)):
+        img = [x_tr1[i], x_tr2[i], x_tr3[i]]
+        for j in range(3):
+            img[j] = cv2.resize(img[j], (224, 224)).astype(np.float32)
+        img_rgb = np.stack(img, axis=2)
+        x_rgb.append(img_rgb)
     x_rgb = np.array(x_rgb)
     return x_rgb
 
-def transform_to_2D(method, x_train, x_test):
+
+def transform_to_2D(method, x_train):
     if method == 'gasf':
-        gasf = GASF(image_size=x_train.shape[1]//2, overlapping=False, scale=-1)
+        gasf = GASF(image_size=x_train.shape[1] // 2, overlapping=False, scale=-1)
         x_tr = gasf.fit_transform(x_train)
-        x_te = gasf.fit_transform(x_test)
+        # x_te = gasf.fit_transform(x_test)
         print('applying GASF')
     elif method == 'mtf':
         mtf = MTF(image_size=x_train.shape[1], n_bins=4, quantiles='empirical', overlapping=False)
         x_tr = mtf.fit_transform(x_train)
-        x_te = mtf.fit_transform(x_test)
+        # x_te = mtf.fit_transform(x_test)
         print('applying MTF')
     elif method == 'rp':
         rp = RecurrencePlots(dimension=3, epsilon='percentage_points', percentage=10)
         x_tr = rp.fit_transform(x_train)
-        x_te = rp.fit_transform(x_test)
+        # x_te = rp.fit_transform(x_test)
         print('applying RP')
 
-    return x_tr, x_te
+    return x_tr
+
 
 def transform_label(y):
     nb_classes = len(np.unique(y))
@@ -171,9 +180,10 @@ def transform_label(y):
 
     return Y
 
-def train_model(method ='gasf', arg_times=1, epochs=50, fname='ECG200'):
-    x_train,y_train,x_test,y_test = loaddataset(fname)
-    x_train,y_train = white_noise_augmentation(x_train, y_train, arg_times)
+
+def train_model(method='gasf', arg_times=1, epochs=50, fname='ECG200'):
+    x_train, y_train, x_test, y_test = loaddataset(fname)
+    x_train, y_train = white_noise_augmentation(x_train, y_train, arg_times)
 
     x_tr, x_te = transform_to_2D(method, x_train, x_test)
 
@@ -202,7 +212,7 @@ def train_model(method ='gasf', arg_times=1, epochs=50, fname='ECG200'):
     # file.write(str(Y_train)+'\n')
     # file.write(str(Y_test)+'\n')
 
-    #two optimizers for choice
+    # two optimizers for choice
     adam = keras.optimizers.Adam(lr=0.001)
     sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
 
@@ -228,29 +238,31 @@ def extractor(fname='ECG200', method='mtf'):
     x_train, y_train, x_test, y_test = loaddataset(fname)
 
     print('start transforming ...')
-    x_tr, x_te = transform_to_2D(method, x_train, x_test)
+    x_tr1 = transform_to_2D('mtf', x_train)
+    x_tr2 = transform_to_2D('gasf', x_train)
+    x_tr3 = transform_to_2D('rp', x_train)
 
     print('to RGB ...')
-    x_train_rgb = prepare_data(x_tr)
+    x_train_rgb = prepare_data(x_tr1, x_tr2, x_tr3)
     # x_test_rgb = prepare_data(x_te)     # output array
     x_test_rgb = []
     x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
     # print(x_train_rgb.shape)  # (100,224,224,3)
 
-    file = open(fname+'_'+method+'_fc1_features_train.txt', 'a+')
-    file2 = open(fname+'_'+method+'_fc1_features_test.txt', 'a+')
+    file = open(fname + '_' + 'comb' + '_fc1_features_train.txt', 'a+')
+    # file2 = open(fname + '_' + method + '_fc1_features_test.txt', 'a+')
 
     print('start predicting ...')
     for i in range(x_train_rgb.shape[0]):
         img = x_train_rgb[i]
-        img = np.expand_dims(img, axis=0)   # (1,224,224,3)
+        img = np.expand_dims(img, axis=0)  # (1,224,224,3)
         img = preprocess_input(img)
         # write labels
-        file.write(str(y_train[i])+' ')
+        file.write(str(y_train[i]) + ' ')
         # write feature vector
         fc1_features = model_fea.predict(img)
         for value in fc1_features[0]:
-            file.write(str(value)+' ')
+            file.write(str(value) + ' ')
         file.write('\n')
     file.close()
 
@@ -273,11 +285,10 @@ config.gpu_options.allow_growth = True  # dynamically grow the memory used on th
 sess = tf.Session(config=config)
 set_session(sess)  # set this TensorFlow session as the default session for Keras
 
-
 # hist = train_model(method='mtf', arg_times=2, epochs=100, fname='ECG200')
 # plt_acc_loss(hist)
 
-extractor('ECG200', 'gasf')
+extractor('ECG5000')
 
 
 
