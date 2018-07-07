@@ -12,7 +12,7 @@
 # from keras.callbacks import ReduceLROnPlateau
 # from keras.preprocessing import image
 #
-# import cv2
+import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 #
@@ -27,7 +27,22 @@ from matplotlib import pyplot as plt
 # print(a)
 # a['rp'] = [1,2,3,4,5]
 # print(a)
-a = np.zeros((2,3))
-c = np.zeros((2,3))
-b = np.stack([a,c], axis=2)
+# a = np.zeros((2,3))
+# c = np.zeros((3,3))
+# # b = np.stack([a,c], axis=2)
+# b = [c]
+# b.append(a)
+# b.append(np.ones((2,4)))
+
+# def test():
+#     a = np.array([2,3])
+#     b = np.array([1,2,1])
+#
+#     return a,b
+#
+# test()
+
+a =  np.array([1,2,3])
+b.append
+
 print(b.shape)

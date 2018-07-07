@@ -69,20 +69,27 @@ X_train = transform(fea_train, pca_n)
 # X_test = transform(fea_test, pca_n)
 # X_tr_te = transform(fea_tr_te, pca_n)
 # print('after transformation: ', X_tr_te.shape)
-bool_tr = y_train == 1
+# bool_tr = y_train == 1
 # bool_te = y_test == 1
 # bool_tr_te = y_tr_te == 1
 # print(y_train)
 
 # draw training and test data points separately
 f1 = plt.figure(1)
-for i in range(len(bool_tr)):
-    if bool_tr[i]:
-        train_good = plt.scatter(X_train[i, 0], X_train[i, 1], c='dodgerblue')
-    else:
-        train_poor = plt.scatter(X_train[i, 0], X_train[i, 1], c='r')
+for i in range(len(y_train)):
+    if y_train[i]==1:
+        class_1 = plt.scatter(X_train[i, 0], X_train[i, 1], c='dodgerblue')
+    elif y_train[i]==2:
+        class_2 = plt.scatter(X_train[i, 0], X_train[i, 1], c='slateblue')
+    elif y_train[i]==3:
+        class_3 = plt.scatter(X_train[i, 0], X_train[i, 1], c='tomato')
+    elif y_train[i]==4:
+        class_4 = plt.scatter(X_train[i, 0], X_train[i, 1], c='hotpink')
+    elif y_train[i]==5:
+        class_5 = plt.scatter(X_train[i, 0], X_train[i, 1], c='red')
+
 plt.title(fname+'_'+method+' training samples')
-plt.legend((train_good, train_poor), ('train_good', 'train_poor'))
+plt.legend((class_1, class_2, class_3, class_4, class_5), ('class_1', 'class_2', 'class_3', 'class_4', 'class_5'))
 
 figname = fname+'_'+method+'_train_pca'+str(pca_n)
 plt.savefig(figname)

@@ -6,7 +6,7 @@ from keras.models import Sequential
 from keras.models import Model
 from keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
 from keras.utils import np_utils
-from keras.layers import Input, Conv2D
+from keras.layers import Input, Conv2D, BatchNormalization
 from keras.layers.core import Flatten, Dense, Dropout, Activation
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.optimizers import SGD
@@ -71,17 +71,22 @@ def VGG_16_new():
     # pool5 = Flatten(name='flatten')(model.outputs)        # this doesn't work
     pool5 = Flatten(name='flatten')(model.layers[-1].output)
 
-    dense_1 = Dense(128, name='dense_1', activation='relu')(pool5)
-    d1 = Dropout(0.5)(dense_1)
+    dense_1 = Dense(128, name='dense_1')(pool5)
+    bn_1 = BatchNormalization()(dense_1)
+    act_1 = Activation('relu')(bn_1)
+    # d1 = Dropout(0.5)(dense_1)
 
-    dense_2 = Dense(128, name='dense_2', activation='relu')(d1)
-    d2 = Dropout(0.5)(dense_2)
+    dense_2 = Dense(128, name='dense_2')(act_1)
+    bn_2 = BatchNormalization()(dense_2)
+    act_2 = Activation('relu')(bn_2)
+    d2 = Dropout(0.25)(act_2)
 
     dense_3 = Dense(2, name='dense_3')(d2)
-    # prediction = Activation("softmax", name="softmax")(dense_3)
-    prediction = Activation("sigmoid", name="sigmoid")(dense_3)
+    bn_3 = BatchNormalization()(dense_3)
+    # prediction = Activation("softmax", name="softmax")(bn_3)
+    prediction = Activation("sigmoid", name="sigmoid")(bn_3)    # for binary classificaction
 
-    model_new = Model(inputs=model.layers[0].input, outputs=prediction)
+    model_new = Model(inputs=model.inputs, outputs=prediction)
 
     # # Create the model
     # model_new = models.Sequential()
@@ -131,13 +136,21 @@ def plt_acc_loss(hist):
     plt.show()
     return True
 
-def prepare_data(pre_data):
-    # transform the output from timeseries-method to standard VGG input format
+def prepare_data(pre_data, method):
+    # transform the output from timeseries method to standard VGG input format
     x_rgb = []
-    for img in pre_data:
-        img_rgb = to_rgb(img)
-        temp = cv2.resize(img_rgb, (224, 224)).astype(np.float32)
-        x_rgb.append(temp)
+    if method != 'comb':
+        for img in pre_data:
+            img_rgb = to_rgb(img)
+            temp = cv2.resize(img_rgb, (224, 224)).astype(np.float32)
+            x_rgb.append(temp)
+    else:
+        for i in range(len(pre_data[0])):
+            a = cv2.resize(pre_data[0][i], (224, 224)).astype(np.float32)
+            b = cv2.resize(pre_data[1][i], (224, 224)).astype(np.float32)
+            c = cv2.resize(pre_data[2][i], (224, 224)).astype(np.float32)
+            img_rgb = np.stack([a,b,c], axis=2)
+            x_rgb.append(img_rgb)
     x_rgb = np.array(x_rgb)
     return x_rgb
 
@@ -171,14 +184,15 @@ def transform_label(y):
 
     return Y
 
-def train_model(method ='gasf', arg_times=1, epochs=50, fname='ECG200'):
+
+def train_model(method ='rp', arg_times=1, epochs=50, fname='ECG200'):
     x_train,y_train,x_test,y_test = loaddataset(fname)
     x_train,y_train = white_noise_augmentation(x_train, y_train, arg_times)
 
     x_tr, x_te = transform_to_2D(method, x_train, x_test)
 
-    x_train_rgb = prepare_data(x_tr)
-    x_test_rgb = prepare_data(x_te)
+    x_train_rgb = prepare_data(x_tr, method)
+    x_test_rgb = prepare_data(x_te, method)
 
     # (sample, row, column, channel), i.e.(100*arg_times,224,224,3)
     # print('train set:', x_train_rgb.shape)
@@ -208,7 +222,7 @@ def train_model(method ='gasf', arg_times=1, epochs=50, fname='ECG200'):
 
     model_new.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=10, min_lr=0.0001)
+    reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.0001)
 
     print("start training....")
     hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
@@ -219,26 +233,37 @@ def train_model(method ='gasf', arg_times=1, epochs=50, fname='ECG200'):
     # return True
 
 
-def extractor(fname='ECG200', method='mtf'):
+def extractor(fname='ECG200', method='rp'):
     model = VGG16(include_top=True, weights='imagenet')
     # Create a new model in order to get the feature vector from FC1
-    model_fea = Model(inputs=model.inputs, outputs=model.get_layer(name='fc1').output)
+    model_fea = Model(inputs=model.layers[0].input, outputs=model.get_layer(name='fc1').output)
+    # or inputs=model.inputs is also ok
 
     # model.summary()
     x_train, y_train, x_test, y_test = loaddataset(fname)
 
     print('start transforming ...')
-    x_tr, x_te = transform_to_2D(method, x_train, x_test)
+    if method != 'comb':
+        x_tr, x_te = transform_to_2D(method, x_train, x_test)
+    else:
+        x_tr = []
+        x_te = []
+        temp0, temp1 = transform_to_2D('rp', x_train, x_test)
+        x_tr.append(temp0), x_te.append(temp1)
+        temp0, temp1 = transform_to_2D('gasf', x_train, x_test)
+        x_tr.append(temp0), x_te.append(temp1)
+        temp0, temp1 = transform_to_2D('mtf', x_train, x_test)
+        x_tr.append(temp0), x_te.append(temp1)
 
     print('to RGB ...')
-    x_train_rgb = prepare_data(x_tr)
-    # x_test_rgb = prepare_data(x_te)     # output array
+    x_train_rgb = prepare_data(x_tr, method)
+    # x_test_rgb = prepare_data(x_te, method)     # output array
     x_test_rgb = []
     x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
     # print(x_train_rgb.shape)  # (100,224,224,3)
 
-    file = open(fname+'_'+method+'_fc1_features_train.txt', 'a+')
-    file2 = open(fname+'_'+method+'_fc1_features_test.txt', 'a+')
+    file = open(fname+'_'+method+'_fc1_features_train', 'a+')
+    # file2 = open(fname+'_'+method+'_fc1_features_test.txt', 'a+')
 
     print('start predicting ...')
     for i in range(x_train_rgb.shape[0]):
@@ -274,10 +299,10 @@ sess = tf.Session(config=config)
 set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 
-# hist = train_model(method='mtf', arg_times=2, epochs=100, fname='ECG200')
+hist = train_model(method='rp', arg_times=2, epochs=100, fname='ECG200')
 # plt_acc_loss(hist)
 
-extractor('ECG200', 'gasf')
+# extractor('ECG5000', 'rp')
 
 
 
