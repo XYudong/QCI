@@ -20,6 +20,7 @@ from keras.backend.tensorflow_backend import set_session
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+import pandas as pd
 
 
 
@@ -62,7 +63,7 @@ def VGG_16_new():
     model = VGG16(include_top=False, input_shape=(224, 224, 3), weights='imagenet')
 
     # Fine-tuning: freeze some layers
-    for layer in model.layers[:-8]:
+    for layer in model.layers[0:-8]:
         layer.trainable = False
     # for layer in model.layers:
     #     print(layer, layer.trainable)
@@ -170,6 +171,10 @@ def transform_to_2D(method, x_train, x_test):
         x_tr = rp.fit_transform(x_train)
         x_te = rp.fit_transform(x_test)
         print('applying RP')
+    else:
+        print('wrong method')
+        x_tr = []
+        x_te = []
 
     return x_tr, x_te
 
@@ -185,12 +190,25 @@ def transform_label(y):
     return Y
 
 
-def train_model(method ='rp', arg_times=1, epochs=50, fname='ECG200'):
+def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     x_train,y_train,x_test,y_test = loaddataset(fname)
     x_train,y_train = white_noise_augmentation(x_train, y_train, arg_times)
 
-    x_tr, x_te = transform_to_2D(method, x_train, x_test)
+    # x_tr, x_te = transform_to_2D(method, x_train, x_test)
+    print('start transforming ...')
+    if method != 'comb':
+        x_tr, x_te = transform_to_2D(method, x_train, x_test)
+    else:
+        x_tr = []
+        x_te = []
+        temp0, temp1 = transform_to_2D('rp', x_train, x_test)
+        x_tr.append(temp0), x_te.append(temp1)
+        temp0, temp1 = transform_to_2D('gasf', x_train, x_test)
+        x_tr.append(temp0), x_te.append(temp1)
+        temp0, temp1 = transform_to_2D('mtf', x_train, x_test)
+        x_tr.append(temp0), x_te.append(temp1)
 
+    print('to RGB ...')
     x_train_rgb = prepare_data(x_tr, method)
     x_test_rgb = prepare_data(x_te, method)
 
@@ -222,7 +240,7 @@ def train_model(method ='rp', arg_times=1, epochs=50, fname='ECG200'):
 
     model_new.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.0001)
+    reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=10, min_lr=0.0001)
 
     print("start training....")
     hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
@@ -233,14 +251,14 @@ def train_model(method ='rp', arg_times=1, epochs=50, fname='ECG200'):
     # return True
 
 
-def extractor(fname='ECG200', method='rp'):
+def extractor(dataset='ECG200', method='rp'):
     model = VGG16(include_top=True, weights='imagenet')
     # Create a new model in order to get the feature vector from FC1
     model_fea = Model(inputs=model.layers[0].input, outputs=model.get_layer(name='fc1').output)
     # or inputs=model.inputs is also ok
 
     # model.summary()
-    x_train, y_train, x_test, y_test = loaddataset(fname)
+    x_train, y_train, x_test, y_test = loaddataset(dataset)
 
     print('start transforming ...')
     if method != 'comb':
@@ -257,38 +275,52 @@ def extractor(fname='ECG200', method='rp'):
 
     print('to RGB ...')
     x_train_rgb = prepare_data(x_tr, method)
-    # x_test_rgb = prepare_data(x_te, method)     # output array
-    x_test_rgb = []
+    x_test_rgb = prepare_data(x_te, method)     # output array
+    # x_test_rgb = []
     x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
-    # print(x_train_rgb.shape)  # (100,224,224,3)
+    print(x_train_rgb.shape[0])  # (100,224,224,3)
 
-    file = open(fname+'_'+method+'_fc1_features_train', 'a+')
-    # file2 = open(fname+'_'+method+'_fc1_features_test.txt', 'a+')
+    # file = open(dataset+'_'+method+'_fc1_features_train.txt', 'w+')
+    # file = open('temp.txt', 'w+')
+    # file2 = open(dataset+'_'+method+'_fc1_features_test.txt', 'w+')
 
+    fname1 = dataset + '_' + method + '_fc1_features_train.csv'
+    fname2 = dataset + '_' + method + '_fc1_features_test.csv'
     print('start predicting ...')
-    for i in range(x_train_rgb.shape[0]):
-        img = x_train_rgb[i]
-        img = np.expand_dims(img, axis=0)   # (1,224,224,3)
-        img = preprocess_input(img)
-        # write labels
-        file.write(str(y_train[i])+' ')
-        # write feature vector
-        fc1_features = model_fea.predict(img)
-        for value in fc1_features[0]:
-            file.write(str(value)+' ')
-        file.write('\n')
-    file.close()
-
-    # for i in range(x_test_rgb.shape[0]):
-    #     img = x_test_rgb[i]
-    #     img = np.expand_dims(img, axis=0)
+    # for i in range(x_train_rgb.shape[0]):
+    #     img = x_train_rgb[i]
+    #     img = np.expand_dims(img, axis=0)   # (1,224,224,3)
     #     img = preprocess_input(img)
-    #     file2.write(str(y_test[i])+' ')
+    #
+    #     # label
+    #     label = [y_train[i]]
+    #     # feature vector
     #     fc1_features = model_fea.predict(img)
-    #     for value in fc1_features[0]:
-    #         file2.write(str(value) + ' ')
-    #     file2.write('\n')
-    # file2.close()
+    #     # print(fc1_features.shape)     #(1, 4096)
+    #     temp = np.concatenate((label, fc1_features))
+    #     df = pd.DataFrame(temp)
+    #     df.to_csv(fname1, mode='a+', header=None, index=None)
+
+    for i in range(x_test_rgb.shape[0]):
+        # print('here')
+        img = x_test_rgb[i]
+        img = np.expand_dims(img, axis=0)
+        img = preprocess_input(img)
+        # label
+        label = [[y_test[i]]]
+        # feature vector
+        fc1_features = model_fea.predict(img)
+        # print(fc1_features.shape)     #(1, 4096)
+        temp = np.concatenate((label, fc1_features), axis=1)
+        if i == 0:
+            df = pd.DataFrame(temp)
+        else:
+            ex = pd.read_csv(fname2, header=None)
+            new = np.concatenate((ex, temp), axis=0)
+            df = pd.DataFrame(new)
+        # print('type: ', type(df))
+        df.to_csv(fname2, mode='w+', header=None, index=None)
+
     return True
 
 
@@ -299,10 +331,10 @@ sess = tf.Session(config=config)
 set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 
-hist = train_model(method='rp', arg_times=2, epochs=100, fname='ECG200')
+# hist = train_model(method='comb', arg_times=2, epochs=100, fname='ECG5000')
 # plt_acc_loss(hist)
 
-# extractor('ECG5000', 'rp')
+extractor('ECG200', 'rp')
 
 
 

@@ -15,6 +15,7 @@
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+import pandas as pd
 #
 # model = VGG16(include_top=True, weights='imagenet')
 # model_new = VGG16(include_top=False, input_shape=(224,224,3), weights='imagenet')
@@ -42,7 +43,38 @@ from matplotlib import pyplot as plt
 #
 # test()
 
-a =  np.array([1,2,3])
-b.append
-
+a = np.array([1.,2,3,4]).astype(np.float32)
+b = np.expand_dims(a, axis=0)
 print(b.shape)
+
+
+# df = pd.DataFrame(b)
+# df.to_csv('a_test.csv', mode='w+', header=None, index=None)
+#
+# c = np.array([1,1,1])
+# # df2 = pd.DataFrame(c)
+# # df2.to_csv('a_test.csv', mode='a+', header=None, index=None)
+# #
+# data = pd.read_csv('a_test.csv', header=None)
+#
+# # # print(a.shape)
+# print(data)
+# # print(data.as_matrix())
+# print(data.values.shape)
+# values = data.values
+# print(values[0])
+
+aa = np.ones((1,10))
+bb = [[2]]
+
+cc = np.concatenate((bb,aa), axis=1)
+dd = cc
+print(cc)
+print(type(cc))
+xx = np.array([1,2,3,3])
+print(type(xx))
+cc = [[]]
+# ee = np.concatenate((cc,dd), axis=0)
+# ee = dd.append([[]], axis)
+# print(ee)
+

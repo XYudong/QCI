@@ -3,4 +3,5 @@ CMakeFiles
 CMakeCache.txt
 *.cmake
 *.txt
+*.csv
 Logs
