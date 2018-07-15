@@ -1,4 +1,6 @@
 # CNN with 1D data
+# import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = '2'    # select to use which GPU
 import keras
 from keras import models
 from keras.models import Sequential
@@ -21,24 +23,39 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
-
+import time
 
 
 np.random.seed(813306)
 
-def readucr(filename):
-    data = np.loadtxt(filename, delimiter=',')
+def readucr(path):
+    # data = np.loadtxt(filename, delimiter=',')
     #print(data[0:100])
-    Y = data[:, 0]
-    X = data[:, 1:]
-    #print(X[0:100])
+    data = pd.read_csv(path, header=None)
+    data = np.array(data)
+    Y = data[:, -1]
+    X = data[:, 0:-1]
+    # print(X[0:100])
     return X, Y
 
-def loaddataset(fname='ECG200'):
-    root = "../data/"
-    x_train, y_train = readucr(root+fname+'/'+fname+'/'+fname+'_TRAIN.txt')
-    x_test, y_test = readucr(root+fname+'/'+fname+'/'+fname+'_TEST.txt')
-    return x_train,y_train,x_test,y_test
+def loaddataset(dataset='ECG200'):
+    # root = "../data/"
+    # x_train, y_train = readucr(root+dataset+'/'+dataset+'/'+dataset+'_TRAIN.txt')
+    # x_test, y_test = readucr(root+dataset+'/'+dataset+'/'+dataset+'_TEST.txt')
+    root = '../data/'
+    if dataset == 'ECG5000':
+        fname_tr = 'ECG5000_class1_2_train.csv'
+        fname_te = 'ECG5000_class1_2_test.csv'
+    elif dataset == 'ECG200':
+        fname_tr = 'ECG200_train.csv'
+        fname_te = 'ECG200_test.csv'
+    else:
+        print('invalid dataset name')
+        return None
+    x_train, y_train = readucr(root+dataset+'/'+dataset+'/' + fname_tr)
+    # x_train, y_train = readucr(root + '/ECG5000_class1_2_train_batch.csv')
+    x_test, y_test = readucr(root + dataset+'/'+dataset+'/' + fname_te)
+    return x_train, y_train, x_test, y_test
 
 def white_noise_augmentation(x, y, times=1):
     # augmentation of 1D data
@@ -55,7 +72,7 @@ def white_noise_augmentation(x, y, times=1):
 
 def to_rgb(img):
     # transform to rgb-style(i.e. 3 channels)
-    img = np.resize(img, (*img.shape, 1))
+    img = np.resize(img, (img.shape[0], img.shape[1], 1))
     img_rgb = np.repeat(img.astype(np.float32), 3, axis=2)
     return img_rgb
 
@@ -217,6 +234,7 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     # print('test set:', x_test_rgb.shape)
 
     x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
+    print('normalized training set:', x_train_rgb.shape)
     print('normalized test set:', x_test_rgb.shape)
 
     Y_train = transform_label(y_train)
@@ -234,7 +252,7 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     # file.write(str(Y_train)+'\n')
     # file.write(str(Y_test)+'\n')
 
-    #two optimizers for choice
+    # two optimizers for choice
     adam = keras.optimizers.Adam(lr=0.001)
     sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
 
@@ -278,28 +296,35 @@ def extractor(dataset='ECG200', method='rp'):
     x_test_rgb = prepare_data(x_te, method)     # output array
     # x_test_rgb = []
     x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
-    print(x_train_rgb.shape[0])  # (100,224,224,3)
+    print(x_train_rgb.shape)     # (100,224,224,3) for ECG200
+    print(x_test_rgb.shape)
 
     # file = open(dataset+'_'+method+'_fc1_features_train.txt', 'w+')
     # file = open('temp.txt', 'w+')
     # file2 = open(dataset+'_'+method+'_fc1_features_test.txt', 'w+')
 
-    fname1 = dataset + '_' + method + '_fc1_features_train.csv'
-    fname2 = dataset + '_' + method + '_fc1_features_test.csv'
+    fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
+    fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
     print('start predicting ...')
-    # for i in range(x_train_rgb.shape[0]):
-    #     img = x_train_rgb[i]
-    #     img = np.expand_dims(img, axis=0)   # (1,224,224,3)
-    #     img = preprocess_input(img)
-    #
-    #     # label
-    #     label = [y_train[i]]
-    #     # feature vector
-    #     fc1_features = model_fea.predict(img)
-    #     # print(fc1_features.shape)     #(1, 4096)
-    #     temp = np.concatenate((label, fc1_features))
-    #     df = pd.DataFrame(temp)
-    #     df.to_csv(fname1, mode='a+', header=None, index=None)
+    for i in range(x_train_rgb.shape[0]):
+        img = x_train_rgb[i]
+        img = np.expand_dims(img, axis=0)
+        img = preprocess_input(img)
+        # label
+        label = [[y_train[i]]]
+        # feature vector
+        fc1_features = model_fea.predict(img)
+        # print(fc1_features.shape)     #(1, 4096)
+        temp = np.concatenate((fc1_features, label), axis=1)    # label-last
+        if i == 0:
+            ex = temp
+        else:
+            new = np.concatenate((ex, temp), axis=0)
+            ex = new
+        if i == x_train_rgb.shape[0] - 1:
+            df = pd.DataFrame(ex)
+            df.to_csv(fname1, mode='w+', header=None, index=None)
+    print('Features from Train: done')
 
     for i in range(x_test_rgb.shape[0]):
         # print('here')
@@ -311,15 +336,16 @@ def extractor(dataset='ECG200', method='rp'):
         # feature vector
         fc1_features = model_fea.predict(img)
         # print(fc1_features.shape)     #(1, 4096)
-        temp = np.concatenate((label, fc1_features), axis=1)
+        temp = np.concatenate((fc1_features, label), axis=1)
         if i == 0:
-            df = pd.DataFrame(temp)
+            ex = temp
         else:
-            ex = pd.read_csv(fname2, header=None)
             new = np.concatenate((ex, temp), axis=0)
-            df = pd.DataFrame(new)
-        # print('type: ', type(df))
-        df.to_csv(fname2, mode='w+', header=None, index=None)
+            ex = new
+        if i == x_test_rgb.shape[0] - 1:
+            df = pd.DataFrame(ex)
+            df.to_csv(fname2, mode='w+', header=None, index=None)
+    print('Features from Test: done')
 
     return True
 
@@ -330,12 +356,14 @@ config.gpu_options.allow_growth = True  # dynamically grow the memory used on th
 sess = tf.Session(config=config)
 set_session(sess)  # set this TensorFlow session as the default session for Keras
 
-
-# hist = train_model(method='comb', arg_times=2, epochs=100, fname='ECG5000')
+t1 = time.time()
+# hist = train_model(method='comb', arg_times=1, epochs=100, fname='ECG5000')
 # plt_acc_loss(hist)
 
-extractor('ECG200', 'rp')
-
+extractor('ECG5000', 'comb')
+t2 = time.time()
+t = t2 - t1
+print('This takes ' + str(t) + ' seconds.')
 
 
 

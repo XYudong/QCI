@@ -1,4 +1,4 @@
-# import keras
+import keras
 # from keras import models
 # from keras.models import Sequential
 #
@@ -24,30 +24,6 @@ import pandas as pd
 # print(model.layers[0].input)
 
 
-# a = dict(mtf=[2,3,4], gasf=[1,2,3])
-# print(a)
-# a['rp'] = [1,2,3,4,5]
-# print(a)
-# a = np.zeros((2,3))
-# c = np.zeros((3,3))
-# # b = np.stack([a,c], axis=2)
-# b = [c]
-# b.append(a)
-# b.append(np.ones((2,4)))
-
-# def test():
-#     a = np.array([2,3])
-#     b = np.array([1,2,1])
-#
-#     return a,b
-#
-# test()
-
-a = np.array([1.,2,3,4]).astype(np.float32)
-b = np.expand_dims(a, axis=0)
-print(b.shape)
-
-
 # df = pd.DataFrame(b)
 # df.to_csv('a_test.csv', mode='w+', header=None, index=None)
 #
@@ -67,14 +43,31 @@ print(b.shape)
 aa = np.ones((1,10))
 bb = [[2]]
 
-cc = np.concatenate((bb,aa), axis=1)
-dd = cc
-print(cc)
-print(type(cc))
-xx = np.array([1,2,3,3])
-print(type(xx))
-cc = [[]]
-# ee = np.concatenate((cc,dd), axis=0)
-# ee = dd.append([[]], axis)
-# print(ee)
+# cc = np.concatenate((bb,aa), axis=1)
+# dd = cc
+# print(cc)
+# print(type(cc))
+# xx = np.array([1,2,3,3])
+# # print(type(xx))
+# # cc = [[]]
+# # ee = np.concatenate((cc,dd), axis=0)
+# # ee = dd.append([[]], axis)
+# # print(ee)
+# # for value in xx:
+# #     if value==1 or value==2:
+# #         print(value)
+#
+# # print(keras.__version__)
+
+# x = np.arange(-5, 5, 0.1)
+# y = np.arange(-5, 5, 0.1)
+# xx, yy = np.meshgrid(x, y, sparse=True)
+# z = np.sin(xx**2 + yy**2)
+# h = plt.contourf(x,y,z, cmap='magma')
+#
+# plt.show()
+
+a, b = aa, bb
+print(a)
+print(b)
 
