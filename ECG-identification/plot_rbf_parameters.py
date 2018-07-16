@@ -100,7 +100,7 @@ class MidpointNormalize(Normalize):
 # dataset for grid search
 
 
-data = pd.read_csv('ECG5000_comb_2D_test.csv', header=None)
+data = pd.read_csv('dense128/ECG200_comb_2D_train.csv', header=None)
 X = data.iloc[:, 0:-1]
 y = data.iloc[:, -1]
 
@@ -129,8 +129,8 @@ y_2d = np.array(y)
 print('start training')
 # C_range = np.logspace(-2, 10, 13)
 # gamma_range = np.logspace(-6, 2, 13)
-C_range = [0.001, 0.01, 0.1, 0.5, 1, 5, 10, 50, 100]
-gamma_range = [50, 10, 1, 0.5, 0.1, 0.01, 0.001, 0.0001, 0.00001]
+C_range = [0.001, 0.01, 0.1, 0.5, 1, 3, 5, 8, 10, 50, 100]
+gamma_range = [50, 10, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0001, 0.00001]
 param_grid = dict(gamma=gamma_range, C=C_range)
 cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
 grid = GridSearchCV(SVC(), param_grid=param_grid, cv=cv)

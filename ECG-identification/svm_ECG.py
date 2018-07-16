@@ -30,8 +30,8 @@ def preprocess_data(X_2D_tr, X_2D_te, y_tr, y_te, dataset):
 def train_model(X_train, X_test, y_train, y_test, dataset):
     print('start training')
     if dataset == 'ECG200':
-        C = 5
-        gamma = 2
+        C = 3
+        gamma = 0.01
     elif dataset == 'ECG5000':
         C = 1
         gamma = 0.1
@@ -70,7 +70,7 @@ def plot_data(groups, dataset, acc):
         return False
 
 
-def plot_boundary(model):
+def plot_boundary(figure, model):
     # plot the decision function
     ax = plt.gca()
     xlim = ax.get_xlim()
@@ -80,25 +80,32 @@ def plot_boundary(model):
     xx = np.linspace(xlim[0], xlim[1], 30)
     yy = np.linspace(ylim[0], ylim[1], 30)
     YY, XX = np.meshgrid(yy, xx)
+    # print('XX shape: ', XX.shape)     # (30, 30)
     xy = np.vstack([XX.ravel(), YY.ravel()]).T
-    Z = model.decision_function(xy).reshape(XX.shape)
+    Z = model.decision_function(xy)
+    # print('Z shape: ', Z.shape)   # (900,)
+    Z = Z.reshape(XX.shape)
 
     # plot decision boundary and margins
-    ax.contour(XX, YY, Z, cmap='Paired')
+    cax = ax.contourf(XX, YY, Z, cmap='Paired')
+    figure.colorbar(cax)
     return None
 
 
 def dump_model(dataset, model):
-    fileout = open('svm_' + dataset + '_model', 'w+b')
+    # root = '../weights/'
+    root = 'dense128/'
+    fileout = open(root + 'svm_' + dataset + '_model', 'w+b')
     pickle.dump(model, fileout)
     fileout.close()
     print('model saved')
     return None
 
 
+root = 'dense128/'
 dataset = 'ECG200'
-fname1 = dataset + '_comb_2D_train.csv'
-fname2 = dataset + '_comb_2D_test.csv'
+fname1 = root + dataset + '_comb_2D_train.csv'
+fname2 = root + dataset + '_comb_2D_test.csv'
 y_tr, X_2D_tr = load_data(fname1)
 y_te, X_2D_te = load_data(fname2)
 
@@ -106,7 +113,7 @@ X_train, X_test, y_train, y_test = preprocess_data(X_2D_tr, X_2D_te, y_tr, y_te,
 
 clf, acc = train_model(X_train, X_test, y_train, y_test, dataset)
 # dump_model(dataset, clf)
-# # plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, s=10, cmap='rainbow')
+
 
 # plot data points
 df = pd.DataFrame(dict(x=X_train[:, 0], y=X_train[:, 1], label=y_train))
@@ -116,7 +123,7 @@ f1 = plt.figure(1)
 plot_data(groups, dataset, acc)
 
 # plot decision boundary
-# plot_boundary(clf)
+plot_boundary(f1, clf)
 
 plt.show()
 

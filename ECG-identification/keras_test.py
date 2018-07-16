@@ -67,7 +67,7 @@ bb = [[2]]
 #
 # plt.show()
 
-a, b = aa, bb
-print(a)
-print(b)
+a = []
+if a:
+    print('here')
 

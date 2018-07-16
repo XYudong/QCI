@@ -272,11 +272,14 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
 
 def extractor(dataset='ECG200', method='rp'):
     model = VGG16(include_top=True, weights='imagenet')
-    # Create a new model in order to get the feature vector from FC1
-    model_fea = Model(inputs=model.layers[0].input, outputs=model.get_layer(name='fc1').output)
+
+    dense_1 = Dense(128, name='dense_1')(model.get_layer(name='flatten').output)
+    # Create a new model
+    model_fea = Model(inputs=model.layers[0].input, outputs=dense_1)
     # or inputs=model.inputs is also ok
 
-    # model.summary()
+    print('new model outputs: ', model_fea.outputs)
+    # model_fea.summary()
     x_train, y_train, x_test, y_test = loaddataset(dataset)
 
     print('start transforming ...')
@@ -300,12 +303,11 @@ def extractor(dataset='ECG200', method='rp'):
     print(x_train_rgb.shape)     # (100,224,224,3) for ECG200
     print(x_test_rgb.shape)
 
-    # file = open(dataset+'_'+method+'_fc1_features_train.txt', 'w+')
-    # file = open('temp.txt', 'w+')
-    # file2 = open(dataset+'_'+method+'_fc1_features_test.txt', 'w+')
+    # fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
+    # fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
 
-    fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
-    fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
+    fname1 = dataset + '_' + method + '_dense1_train.csv'
+    fname2 = dataset + '_' + method + '_dense1_test.csv'
     print('start predicting ...')
     for i in range(x_train_rgb.shape[0]):
         img = x_train_rgb[i]
@@ -324,11 +326,11 @@ def extractor(dataset='ECG200', method='rp'):
             ex = new
         if i == x_train_rgb.shape[0] - 1:
             df = pd.DataFrame(ex)
+            print('df shape: ', df.shape)
             df.to_csv(fname1, mode='w+', header=None, index=None)
     print('Features from Train: done')
 
     for i in range(x_test_rgb.shape[0]):
-        # print('here')
         img = x_test_rgb[i]
         img = np.expand_dims(img, axis=0)
         img = preprocess_input(img)
@@ -361,7 +363,7 @@ t1 = time.time()
 # hist = train_model(method='comb', arg_times=1, epochs=100, fname='ECG5000')
 # plt_acc_loss(hist)
 
-extractor('ECG5000', 'comb')
+extractor('ECG200', 'comb')
 t2 = time.time()
 t = t2 - t1
 print('This takes ' + str(t) + ' seconds.')
