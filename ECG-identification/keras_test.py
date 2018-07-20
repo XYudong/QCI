@@ -67,7 +67,10 @@ bb = [[2]]
 #
 # plt.show()
 
-a = []
-if a:
-    print('here')
+a = [9,9]
+b = [5,5]
+f1 = plt.figure(1, figsize=(8,4))
+plt.plot([1,10], a, c='r')
+plt.plot([1,10], b, c='pink')
+plt.show()
 

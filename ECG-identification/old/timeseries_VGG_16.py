@@ -1,6 +1,6 @@
 # CNN with 1D data
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'    # select to use which GPU
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'    # select to use which GPU
 import keras
 from keras import models
 from keras.models import Sequential
@@ -13,7 +13,7 @@ from keras.layers.core import Flatten, Dense, Dropout, Activation
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras import regularizers
 from keras.optimizers import SGD
-from keras.callbacks import ReduceLROnPlateau, LearningRateScheduler, TensorBoard, ModelCheckpoint
+from keras.callbacks import ReduceLROnPlateau, TensorBoard, ModelCheckpoint
 from keras.preprocessing import image
 from pyts.image import GASF, MTF, RecurrencePlots
 
@@ -25,7 +25,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
 import time
-import pickle
 
 
 np.random.seed(813306)
@@ -92,17 +91,17 @@ def VGG_16_new():
     # pool5 = Flatten(name='flatten')(model.outputs)        # this doesn't work
     pool5 = Flatten(name='flatten')(model.layers[-1].output)
 
-    dense_1 = Dense(50, name='dense_1', kernel_regularizer=regularizers.l2(0.01))(pool5)
+    dense_1 = Dense(128, name='dense_1', kernel_regularizer=regularizers.l2(0.01))(pool5)
     bn_1 = BatchNormalization()(dense_1)
     act_1 = Activation('relu')(bn_1)
     d1 = Dropout(0.5, name='drop1')(act_1)
 
-    #dense_2 = Dense(10, name='dense_2', kernel_regularizer=regularizers.l2(0.01))(d1)
-    #bn_2 = BatchNormalization()(dense_2)
-    #act_2 = Activation('relu')(bn_2)
-    #d2 = Dropout(0.5, name='drop2')(act_2)
+    dense_2 = Dense(80, name='dense_2', kernel_regularizer=regularizers.l2(0.01))(d1)
+    bn_2 = BatchNormalization()(dense_2)
+    act_2 = Activation('relu')(bn_2)
+    d2 = Dropout(0.5, name='drop2')(act_2)
 
-    dense_3 = Dense(2, name='dense_3', kernel_regularizer=regularizers.l2(0.01))(d1)
+    dense_3 = Dense(2, name='dense_3', kernel_regularizer=regularizers.l2(0.01))(d2)
     bn_3 = BatchNormalization()(dense_3)
     # prediction = Activation("softmax", name="softmax")(bn_3)
     prediction = Activation("sigmoid", name="sigmoid")(bn_3)    # for binary classificaction
@@ -137,33 +136,30 @@ def data_normalization(x_train,x_test):
 
 def plt_acc_loss(hist):
     # summarize history for accuracy
-    plt.figure(1, figsize=(8,10))
-    plt.subplot(211)
-    plt.plot(hist.history['acc'], c='dodgerblue', linewidth=2)
+    plt.figure(1, figsize=(8,8))
+    plt.plot(hist.history['acc'], c='dodgerblue')
     plt.plot(hist.history['val_acc'], c='r')
     xlim = plt.gca().get_xlim()
-    plt.plot(xlim, [0.9, 0.9], '--', c='seagreen')
+    plt.plot(xlim, [0.9, 0.9], '--', c='pink')
     plt.ylim(0.3, 1.0)
     plt.grid(True)
     plt.title('Model accuracy')
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
-    plt.legend(['train acc', 'test acc '+str(format(max(hist.history['val_acc']), '.3f'))], loc='lower right')
+    plt.legend(['train acc', 'test acc '+str(format(max(hist.history['val_acc']), '.2f'))], loc='lower right')
+    figname1 = 'vgg16_ECG200_acc_9'
+    plt.savefig(figname1)
 
     # summarize history for loss
-    # plt.figure(2, figsize=(8, 8))
-    plt.subplot(212)
+    plt.figure(2, figsize=(8, 8))
     plt.plot(hist.history['loss'], c='dodgerblue')
     plt.plot(hist.history['val_loss'], c='r')
-    plt.grid(True)
     plt.title('Model loss')
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(['train loss', 'test loss'], loc='upper right')
-    #figname2 = 'vgg16_ECG200_loss_latest'
-    #plt.savefig(figname2)
-    #figname = 'vgg16_ECG200_latest'
-    #plt.savefig(figname)
+    figname2 = 'vgg16_ECG200_loss_9'
+    plt.savefig(figname2)
     plt.show()
     return True
 
@@ -219,12 +215,6 @@ def transform_label(y):
 
     return Y
 
-def lr_scheduler(epoch, lr):
-	if epoch == 20:
-		lr = lr*0.2
-	elif epoch == 40:
-		lr = lr*0.5
-	return lr 
 
 def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     x_train,y_train,x_test,y_test = loaddataset(fname)
@@ -273,27 +263,20 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     # file.write(str(Y_test)+'\n')
 
     # two optimizers for choice
-    adam = keras.optimizers.Adam(lr=0.0002)
-    # sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
+    adam = keras.optimizers.Adam(lr=0.0003)
+    sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
 
     model_new.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    # callbacks
-    # schedule = lr_scheduler
-    reduce_lr = LearningRateScheduler(lr_scheduler)
-    # reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.00001)
-    # # tensorboard = TensorBoard('logs/run_9')
-    checkpointer = ModelCheckpoint('../weights/vgg16_new_20.h5', monitor='val_acc', save_best_only=True)
+    reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.00001)
+    tensorboard = TensorBoard('logs/run_9')
+    checkpointer = ModelCheckpoint('../weights/vgg16_new_9.h5', monitor='val_acc', save_best_only=True)
 
     print("start training....")
     hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
                          verbose=2, validation_data=(x_test_rgb, Y_test),
-                         callbacks=[reduce_lr, checkpointer])
+                         callbacks=[reduce_lr, checkpointer, tensorboard])
     # model_new.save('../weights/vgg16_new_4.h5')
-
-    # dump history
-    with open('../history/vgg16_ECG200_20', 'w+b') as file:
-    	pickle.dump(hist.history, file)
 
     return hist
     # return True

@@ -1,0 +1,30 @@
+1. d2: one layer dropout(0.25), 100 epochs: val_acc < 0.85
+2. d2: one layer dropout(0.5), 60 epochs: get validation acc 0.88
+3. d1: 0.5, d2: 0.25, 80 epochs: val acc 0.86
+4. d1: 0.5, dense_2: 80, d2 = 0.25, 80 epochs,: val_acc: 0.91
+
+below: save model with the best val_acc
+5. d1: 0.5, dense_2: 80, d2 = 0.5, 70 epochs,: val_acc: 0.91
+6. with L2(0.01) regularization, dense_1: 80, d1: 0.5, dense_2: 80, d2 = 0.25: val_acc: 0.91 
+7. with L2(0.05), both dense: 60, d2=0.5, 60 epochs: val_acc: 0.90
+8. with L2(0.01), both dense 128, d2=0.25, 60 epochs: val_acc: 0.91
+s
+9. dense1 128, dens2 80, lr=0.0002, 60 epochs: val_acc: 0.93
+10. lr=0.0004, after epoch 20: lr=0.0002, after epoch 40: lr=0.0001,
+70 epochs: val_acc: 0.93 
+
+11. lr=0.0002, after epoch30: lr=0.5*lr; after epoch50: lr=0.5*lr,
+70 epochs: val_acc: 0.90
+
+12. lr=0.0002, after 25: lr=0.2*lr, after 45: lr=0.2*lr, delete layers in the block of dense2, 70 epochs: val_acc:0.92
+
+13. dense1 80, val_acc: 0.94
+14. dense1 50, after 40: lr=0.1*lr, 60 epochs: 0.948
+15. dense1 30, 0.93     (not better than 14th)
+16. dense1 50, dense2 20, val_acc: 0.923
+17. dense1 40, dense2 10, cal_acc: 0.923
+18. dense1 50, lr=0.0001, delete dense2, 0.923 (lr is too small)
+19. lr=0.00015, after 20: 0.1*lr, after 40: 0.5*lr, val_acc: 0.915
+
+20. lr=0.0002, after 20: 0.2*lr, after 40: 0.5*lr, val_acc: 0.954
+
