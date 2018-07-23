@@ -1,0 +1,11 @@
+6. FN: [0, 15, 54]; FP: [9, 41]; false_predictions: 5 ;  0.92
+8. FN: [54]; FP: [4, 9, 19, 22, 37]; false_predictions: 6 ; 0.91
+9. FN: []; FP: [9, 19, 57]; false_predictions: 3 ; 0.93
+
+20. FN: []; FP: [9]; false_predictions: 1 ; 0.95
+21. FN: []; FP: [9, 19]; false_predictions: 2 ; 0.93
+22. FN: []; FP: [9, 19]; false_predictions: 2 ; 0.94
+
+
+# 10. FN: []; FP: [9, 19, 46]; false_predictions: 3 ; 0.93
+# 23. FN: [14]; FP: [4, 9, 19]; false_predictions: 4 ; 0.93

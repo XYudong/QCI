@@ -273,7 +273,7 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
 def extractor(dataset='ECG200', method='rp'):
     model = VGG16(include_top=True, weights='imagenet')
 
-    dense_1 = Dense(128, name='dense_1')(model.get_layer(name='flatten').output)
+    dense_1 = Dense(50, name='dense_1')(model.get_layer(name='flatten').output)
     # Create a new model
     model_fea = Model(inputs=model.layers[0].input, outputs=dense_1)
     # or inputs=model.inputs is also ok
@@ -306,6 +306,7 @@ def extractor(dataset='ECG200', method='rp'):
     # fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
     # fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
 
+    path = 'dense50/'
     fname1 = dataset + '_' + method + '_dense1_train.csv'
     fname2 = dataset + '_' + method + '_dense1_test.csv'
     print('start predicting ...')
@@ -326,8 +327,8 @@ def extractor(dataset='ECG200', method='rp'):
             ex = new
         if i == x_train_rgb.shape[0] - 1:
             df = pd.DataFrame(ex)
-            print('df shape: ', df.shape)
-            df.to_csv(fname1, mode='w+', header=None, index=None)
+            print('df shape of training: ', df.shape)
+            df.to_csv(path + fname1, mode='w+', header=None, index=None)
     print('Features from Train: done')
 
     for i in range(x_test_rgb.shape[0]):
@@ -347,7 +348,7 @@ def extractor(dataset='ECG200', method='rp'):
             ex = new
         if i == x_test_rgb.shape[0] - 1:
             df = pd.DataFrame(ex)
-            df.to_csv(fname2, mode='w+', header=None, index=None)
+            df.to_csv(path + fname2, mode='w+', header=None, index=None)
     print('Features from Test: done')
 
     return True

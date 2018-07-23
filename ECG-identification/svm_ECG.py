@@ -16,22 +16,22 @@ def load_data(path):
     return y, fea_2D
 
 
-def preprocess_data(X_2D_tr, X_2D_te, y_tr, y_te, dataset):
-    if dataset == 'ECG200':
-        y = np.concatenate((y_tr, y_te))
-        X_2D = np.concatenate((X_2D_tr, X_2D_te))
-        print('X shape: ', X_2D.shape)
-        X_train, X_test, y_train, y_test = train_test_split(X_2D, y, test_size=0.25, random_state=42)
-    else:
-        X_train, X_test, y_train, y_test = X_2D_tr, X_2D_te, y_tr, y_te
-    return X_train, X_test, y_train, y_test
+def preprocess_data(x_2D_tr, x_2D_te, y_tr, y_te, dataset):
+    # if dataset == 'ECG200':
+    #     y = np.concatenate((y_tr, y_te))
+    #     X_2D = np.concatenate((X_2D_tr, X_2D_te))
+    #     print('X shape: ', X_2D.shape)
+    #     X_train, X_test, y_train, y_test = train_test_split(X_2D, y, test_size=0.25, random_state=42)
+    # else:
+    x_train, x_test, y_train, y_test = x_2D_tr, x_2D_te, y_tr, y_te
+    return x_train, x_test, y_train, y_test
 
 
 def train_model(X_train, X_test, y_train, y_test, dataset):
     print('start training')
     if dataset == 'ECG200':
-        C = 3
-        gamma = 0.01
+        C = 1
+        gamma = 1
     elif dataset == 'ECG5000':
         C = 1
         gamma = 0.1
@@ -54,7 +54,7 @@ def plot_data(groups, dataset, acc):
             else:
                 l = 'Normal'
             plt.plot(group.x, group.y, 'o', label=l, ms=5)
-            plt.title(dataset + '_train_2D' + '  accuracy: ' + str(acc))
+            plt.title(dataset + '_train_2D' + '  test_accuracy: ' + str(acc))
         plt.legend()
     elif dataset == 'ECG5000':
         for l, group in groups:
@@ -63,7 +63,7 @@ def plot_data(groups, dataset, acc):
             elif l == 2:
                 l = 'class 2'
             plt.plot(group.x, group.y, 'o', label=l, ms=3)
-            plt.title(dataset + '_train_2D' + '  accuracy: ' + str(acc))
+            plt.title(dataset + '_train_2D' + '  test_accuracy: ' + str(acc))
         plt.legend()
     else:
         print('invalid dataset name')
@@ -94,25 +94,29 @@ def plot_boundary(figure, model):
 
 def dump_model(dataset, model):
     # root = '../weights/'
-    root = 'dense128/'
-    fileout = open(root + 'svm_' + dataset + '_model', 'w+b')
-    pickle.dump(model, fileout)
-    fileout.close()
+    root = 'dense50/'
+    with open(root + 'svm_' + dataset + '_model', 'w+b') as outfile:
+        pickle.dump(model, outfile)
     print('model saved')
     return None
 
 
-root = 'dense128/'
+root = 'dense50/'
 dataset = 'ECG200'
-fname1 = root + dataset + '_comb_2D_train.csv'
-fname2 = root + dataset + '_comb_2D_test.csv'
-y_tr, X_2D_tr = load_data(fname1)
-y_te, X_2D_te = load_data(fname2)
+# fname1 = root + dataset + '_comb_2D_train.csv'
+# fname2 = root + dataset + '_comb_2D_test.csv'
+# y_tr, X_2D_tr = load_data(fname1)
+# y_te, X_2D_te = load_data(fname2)
+
+fname = root + dataset + '_comb_2D.csv'
+y, X_2D = load_data(fname)
+
+X_2D_tr, X_2D_te, y_tr, y_te = train_test_split(X_2D, y, test_size=0.25, random_state=55)
 
 X_train, X_test, y_train, y_test = preprocess_data(X_2D_tr, X_2D_te, y_tr, y_te, dataset)
 
 clf, acc = train_model(X_train, X_test, y_train, y_test, dataset)
-# dump_model(dataset, clf)
+dump_model(dataset, clf)
 
 
 # plot data points
