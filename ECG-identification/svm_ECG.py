@@ -33,7 +33,7 @@ def train_model(X_train, X_test, y_train, y_test, dataset):
         C = 1
         gamma = 1
     elif dataset == 'ECG5000':
-        C = 1
+        C = 5
         gamma = 0.1
     else:
         print('invalid dataset name')
@@ -94,15 +94,15 @@ def plot_boundary(figure, model):
 
 def dump_model(dataset, model):
     # root = '../weights/'
-    root = 'dense50/'
+    root = 'dense128/'
     with open(root + 'svm_' + dataset + '_model', 'w+b') as outfile:
         pickle.dump(model, outfile)
-    print('model saved')
+    print('SVM model saved')
     return None
 
 
-root = 'dense50/'
-dataset = 'ECG200'
+root = 'dense128/'
+dataset = 'ECG5000'
 # fname1 = root + dataset + '_comb_2D_train.csv'
 # fname2 = root + dataset + '_comb_2D_test.csv'
 # y_tr, X_2D_tr = load_data(fname1)

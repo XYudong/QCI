@@ -67,6 +67,7 @@ bb = [[2]]
 #
 # plt.show()
 
-a = []
-print(str(a))
+a = np.random.randn(3,4)
+print(a[0, :].shape)
+print(type(a))
 

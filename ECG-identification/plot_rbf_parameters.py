@@ -63,8 +63,8 @@ smoothed out by increasing the number of CV iterations ``n_splits`` at the
 expense of compute time. Increasing the value number of ``C_range`` and
 ``gamma_range`` steps will increase the resolution of the hyper-parameter heat
 map.
-
 '''
+
 # print(__doc__)
 
 import numpy as np
@@ -100,7 +100,7 @@ class MidpointNormalize(Normalize):
 # dataset for grid search
 
 
-data = pd.read_csv('dense50/ECG200_comb_2D.csv', header=None)
+data = pd.read_csv('dense128/ECG5000_comb_2D.csv', header=None)
 X = data.iloc[:, 0:-1]
 y = data.iloc[:, -1]
 
@@ -129,8 +129,8 @@ y_2d = np.array(y)
 print('start training')
 # C_range = np.logspace(-2, 10, 13)
 # gamma_range = np.logspace(-6, 2, 13)
-C_range = [0.001, 0.01, 0.1, 0.5, 0.8, 1, 2, 3, 5, 8, 10, 50, 100]
-gamma_range = [50, 10, 8, 5, 3, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0001]
+C_range = [0.001, 0.01, 0.1, 0.5, 1, 5, 10, 50, 100]
+gamma_range = [50, 10, 8, 5, 1, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0001]
 param_grid = dict(gamma=gamma_range, C=C_range)
 cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
 grid = GridSearchCV(SVC(), param_grid=param_grid, cv=cv)

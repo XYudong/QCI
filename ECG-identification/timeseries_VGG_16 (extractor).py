@@ -273,7 +273,7 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
 def extractor(dataset='ECG200', method='rp'):
     model = VGG16(include_top=True, weights='imagenet')
 
-    dense_1 = Dense(50, name='dense_1')(model.get_layer(name='flatten').output)
+    dense_1 = Dense(128, name='dense_1')(model.get_layer(name='flatten').output)
     # Create a new model
     model_fea = Model(inputs=model.layers[0].input, outputs=dense_1)
     # or inputs=model.inputs is also ok
@@ -306,10 +306,10 @@ def extractor(dataset='ECG200', method='rp'):
     # fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
     # fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
 
-    path = 'dense50/'
+    path = 'dense128/'
     fname1 = dataset + '_' + method + '_dense1_train.csv'
     fname2 = dataset + '_' + method + '_dense1_test.csv'
-    print('start predicting ...')
+    print('start extracting ...')
     for i in range(x_train_rgb.shape[0]):
         img = x_train_rgb[i]
         img = np.expand_dims(img, axis=0)
@@ -364,7 +364,7 @@ t1 = time.time()
 # hist = train_model(method='comb', arg_times=1, epochs=100, fname='ECG5000')
 # plt_acc_loss(hist)
 
-extractor('ECG200', 'comb')
+extractor('ECG5000', 'comb')
 t2 = time.time()
 t = t2 - t1
 print('This takes ' + str(t) + ' seconds.')

@@ -132,6 +132,20 @@ def VGG_16_new():
     return model_new
 
 
+def simpleNN():
+    img_input = Input(shape=(224, 224, 3), name='input')
+    x = Flatten(name='flatten')(img_input)
+    x = Dense(128, name='fc1')(x)
+    x = BatchNormalization()(x)
+    x = Dense(2, name='fc2')(x)
+    x = BatchNormalization()(x)
+    prediction = Activation('sigmoid', name='output')(x)
+
+    model = Model(inputs=img_input, outputs=prediction)
+
+    return model
+
+
 def data_normalization(x_train, x_test):
     x_train_mean = x_train.mean()
     x_train_std = x_train.std()
@@ -205,7 +219,7 @@ def transform_to_2D(method, x_train, x_test):
         x_te = mtf.fit_transform(x_test)
         print('applying MTF')
     elif method == 'rp':
-        rp = RecurrencePlots(dimension=3, epsilon='percentage_points', percentage=10)
+        rp = RecurrencePlots(dimension=1, epsilon='percentage_points', percentage=10)
         x_tr = rp.fit_transform(x_train)
         x_te = rp.fit_transform(x_test)
         print('applying RP')
@@ -230,9 +244,9 @@ def transform_label(y):
 
 
 def lr_scheduler(epoch, lr):
-    if epoch == 15:
+    if epoch == 4:
         lr = lr * 0.5
-    elif epoch == 30:
+    elif epoch == 7:
         lr = lr * 0.5
     return lr
 
@@ -275,7 +289,8 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     print('batch size: ', batch_size)
 
     # create a model
-    model_new = VGG_16_new()
+    # model_new = VGG_16_new()
+    model_new = simpleNN()
 
     # print(x_train_rgb.shape, Y_train.shape)
     # print(x_test_rgb.shape, Y_test.shape)
@@ -293,16 +308,15 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     reduce_lr = LearningRateScheduler(lr_scheduler)
     # reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.00001)
     # # tensorboard = TensorBoard('logs/run_9')
-    checkpointer = ModelCheckpoint('../weights/vgg16_5000_3.h5', monitor='val_acc', save_best_only=True)
+    checkpointer = ModelCheckpoint('../weights/vgg16_5000_simp.h5', monitor='val_acc', save_best_only=True)
 
     print("start training....")
     hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
                          verbose=2, validation_data=(x_test_rgb, Y_test),
                          callbacks=[checkpointer, reduce_lr])
-    # model_new.save('../weights/vgg16_new_4.h5')
 
     # dump history dictionary
-    with open('../history/vgg16_ECG5000_3', 'w+b') as file:
+    with open('../history/vgg16_ECG5000_simp', 'w+b') as file:
         pickle.dump(hist.history, file)
 
     return hist
@@ -390,19 +404,18 @@ def extractor(dataset='ECG200', method='rp'):
     return True
 
 
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-# config.log_device_placement = True  # to log device placement (on which device the operation ran)
-sess = tf.Session(config=config)
-set_session(sess)  # set this TensorFlow session as the default session for Keras
+# config = tf.ConfigProto()
+# config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+# # config.log_device_placement = True  # to log device placement (on which device the operation ran)
+# sess = tf.Session(config=config)
+# set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 t1 = time.time()
 
-hist = train_model(method='comb', arg_times=3, epochs=50, fname='ECG5000')
+hist = train_model(method='comb', arg_times=1, epochs=10, fname='ECG5000')
 plt_acc_loss(hist)
 
 # extractor('ECG200', 'comb')
-
 t2 = time.time()
 t = t2 - t1
 print('This takes ' + str(t) + ' seconds.')

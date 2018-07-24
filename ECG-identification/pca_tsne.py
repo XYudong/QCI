@@ -28,7 +28,7 @@ def transform(fea, n=40):
 
 
 def dump_data(dataset, method, train, test=[]):
-    root = 'dense50/'
+    root = 'dense128/'
     if test:
         df_tr = pd.DataFrame(train)
         df_te = pd.DataFrame(test)
@@ -38,6 +38,8 @@ def dump_data(dataset, method, train, test=[]):
         all_data = train
         df = pd.DataFrame(all_data)
         df.to_csv(root + dataset + '_' + method + '_2D.csv', header=None, index=None)
+    print('data dumped')
+
 
 def pca_n(data):
     # plot the curve of n_components vs variance ratio
@@ -74,7 +76,7 @@ def pca_n(data):
 
 
 def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
-    n_pca = 15
+    n_pca = 40
     print('transforming')
     # X_train = transform(fea_train, n_pca)
     # X_test = transform(fea_test, n_pca)
@@ -139,13 +141,13 @@ def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
             test_good = plt.scatter(X_tr_te[i+len(bool_tr), 0], X_tr_te[i+len(bool_tr), 1], c='dodgerblue', s=20)
         else:
             test_poor = plt.scatter(X_tr_te[i+len(bool_tr), 0], X_tr_te[i+len(bool_tr), 1], c='r', s=20)
-    fp = plt.scatter(X_tr_te[[9+len(bool_tr)], 0], X_tr_te[[9+len(bool_tr)], 1],
-                     c='purple', s=25)
-    plt.title(dataset+'_'+method+'_dense50_2D')
-    plt.legend((train_good,train_poor,test_good,test_poor, fp), ('train_Normal','train_Ischemia',
-                                                                 'test_Normal','test_Ischemia', 'false_positive'))
+    # fp = plt.scatter(X_tr_te[[9+len(bool_tr)], 0], X_tr_te[[9+len(bool_tr)], 1],
+    #                  c='purple', s=25)
+    plt.title(dataset+'_'+method+'_dense128_2D')
+    # plt.legend((train_good,train_poor,test_good,test_poor, fp), ('train_Normal','train_Ischemia',
+    #                                                              'test_Normal','test_Ischemia', 'false_positive'))
     #
-    # plt.legend((train_good, train_poor, test_good, test_poor), ('train_class1', 'train_class2', 'test_class1', 'test_class2'))
+    plt.legend((train_good, train_poor, test_good, test_poor), ('train_class1', 'train_class2', 'test_class1', 'test_class2'))
 
     # figname = fname+'_'+method+'_pca'+str(n_pca)
     # plt.savefig(figname)
@@ -155,9 +157,9 @@ def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
 
 
 # name of data set
-dataset = 'ECG200'
+dataset = 'ECG5000'
 method = 'comb'
-path = 'dense50/'
+path = 'dense128/'
 print('loading data')
 y_train, fea_train = load_data(path + dataset+'_'+method+'_dense1_train.csv')
 y_test, fea_test = load_data(path + dataset+'_'+method+'_dense1_test.csv')
