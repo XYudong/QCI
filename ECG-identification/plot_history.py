@@ -18,7 +18,7 @@ class History(object):
             self.load_hist()
             self.plt_acc_loss()
 
-            path = './figures/latest/'
+            path = './figures/100_100/'
             plt.savefig(path + self.fname)
 
         plt.show()
@@ -78,8 +78,8 @@ class Analysis(object):
         # print(data[0:100])
         data = pd.read_csv(path, header=None)
         data = np.array(data)
-        Y = data[:, -1]
-        X = data[:, 0:-1]
+        Y = data[:, 0]      # for .txt files
+        X = data[:, 1:]
         # print(X[0:100])
         return X, Y
 
@@ -89,8 +89,8 @@ class Analysis(object):
             fname_tr = 'ECG5000_class1_2_train.csv'
             fname_te = 'ECG5000_class1_2_test.csv'
         elif self.dataset == 'ECG200':
-            fname_tr = 'ECG200_train.csv'
-            fname_te = 'ECG200_test.csv'
+            fname_tr = 'ECG200_TRAIN.txt'
+            fname_te = 'ECG200_TEST.txt'
         else:
             print('invalid dataset name')
             return None
@@ -110,7 +110,7 @@ class Analysis(object):
             x_te = mtf.fit_transform(x_test)
             print('applying MTF')
         elif method == 'rp':
-            rp = RecurrencePlots(dimension=3, epsilon='percentage_points', percentage=10)
+            rp = RecurrencePlots(dimension=1, epsilon='percentage_points', percentage=10)
             x_tr = rp.fit_transform(x_train)
             x_te = rp.fit_transform(x_test)
             print('applying RP')
@@ -168,34 +168,50 @@ class Analysis(object):
         return pred, classes
 
 
-model_name = 'vgg16_new_23.h5'
-ana = Analysis(model_name, 'ECG200')
+def do_logic(mode):
+    if mode == 'prediction':
+        model_name = 'vgg16_200_txt_3.h5'
+        # model_name = 'vgg16_new_23.h5'
+        ana = Analysis(model_name, 'ECG200')
 
-preds, labels = ana.prediction()
-idx = []
+        class_probabilities, labels = ana.prediction()
 
-for i in range(0, len(labels)):
-    if labels[i] == -1:
-        labels[i] = 0
-# print(labels[0:10])
-for pred in preds:
-    # print(pred)
-    # print(pred.shape)
-    temp = np.argmax(pred)
-    idx.append(temp)
-# print(idx[0:10])
+        preds = []
+        for i in range(0, len(labels)):
+            if labels[i] == -1:
+                labels[i] = 0
+        # print(labels[0:10])
+        for pred in class_probabilities:
+            # print(pred)
+            # print(pred.shape)
+            temp = np.argmax(pred)
+            preds.append(temp)
+        # print(preds[0:10])
 
-ll = labels - idx
-FN = []
-FP = []
-true_pred = 0
-FN = [i for i, x in enumerate(ll) if x == 1]
-FP = [i for i, x in enumerate(ll) if x == -1]
-false_pre = len(FN) + len(FP)
+        ll = labels - preds
+        # print(ll[0:20])
+        # print(labels[0:20])
+        # true_pred = 0
+        FN = [i for i, x in enumerate(ll) if x == 1]
+        FP = [i for i, x in enumerate(ll) if x == -1]
+        true = [i for i, x in enumerate(ll) if x == 0]
+        true_pre = len(true)
+        false_pre = len(FN) + len(FP)
 
-str(false_pre)
+        print('FN: ' + str(FN) + '; FP: ' + str(FP) + '; # of false_predictions: '+str(false_pre)
+              + '; # of true predictions: '+str(true_pre))
+    elif mode == 'history':
+        hist_name = 'vgg16_ECG200_txt_3'
+        history = History(hist_name)
+        history.draw_hist()
 
-print('FN: ' + str(FN) + '; FP: ' + str(FP) + '; false_predictions: '+str(false_pre))
+    return None
+
+
+# mode = 'history'
+mode = 'prediction'
+do_logic(mode)
+
 
 
 

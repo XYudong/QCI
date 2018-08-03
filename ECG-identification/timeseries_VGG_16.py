@@ -1,6 +1,6 @@
 # CNN with 1D data
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # select to use which GPU
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'  # select to use which GPU
 import keras
 from keras import models
 from keras.models import Sequential
@@ -36,8 +36,9 @@ def readucr(path):
     # print(data[0:100])
     data = pd.read_csv(path, header=None)
     data = np.array(data)
-    Y = data[:, -1]
-    X = data[:, 0:-1]
+    print(data.dtype)
+    Y = data[:, 0]      # for .txt files
+    X = data[:, 1:]
     # print(X[0:100])
     return X, Y
 
@@ -50,16 +51,18 @@ def loaddataset(dataset='ECG200'):
     if dataset == 'ECG5000':
         fname_tr = 'ECG5000_class1_2_train.csv'
         fname_te = 'ECG5000_class1_2_test.csv'
+
+        x, y = readucr(root + dataset + '/' + dataset + '/' + 'ECG5000_class1_2_all.csv')
+        x_train, x_test,  y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=88)
     elif dataset == 'ECG200':
-        fname_tr = 'ECG200_train.csv'
-        fname_te = 'ECG200_test.csv'
+        fname_tr = 'ECG200_TRAIN.txt'
+        fname_te = 'ECG200_TEST.txt'
+
+        x_train, y_train = readucr(root + dataset + '/' + dataset + '/' + fname_tr)
+        x_test, y_test = readucr(root + dataset + '/' + dataset + '/' + fname_te)
     else:
         print('invalid dataset name')
         return None
-    # x_train, y_train = readucr(root + dataset + '/' + dataset + '/' + fname_tr)
-    # x_test, y_test = readucr(root + dataset + '/' + dataset + '/' + fname_te)
-    x, y = readucr(root + dataset + '/' + dataset + '/' + 'ECG5000_class1_2_all.csv')
-    x_train, x_test,  y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=88)
     return x_train, y_train, x_test, y_test
 
 
@@ -133,9 +136,9 @@ def VGG_16_new():
 
 
 def simpleNN():
-    img_input = Input(shape=(224, 224, 3), name='input')
+    img_input = Input(shape=(96,), name='input')
     x = Flatten(name='flatten')(img_input)
-    x = Dense(128, name='fc1')(x)
+    x = Dense(50, name='fc1')(x)
     x = BatchNormalization()(x)
     x = Dense(2, name='fc2')(x)
     x = BatchNormalization()(x)
@@ -244,19 +247,18 @@ def transform_label(y):
 
 
 def lr_scheduler(epoch, lr):
-    if epoch == 4:
+    if epoch == 20:
         lr = lr * 0.5
-    elif epoch == 7:
-        lr = lr * 0.5
+    elif epoch == 35:
+        lr = lr * 0.2
     return lr
 
 
-def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
+def train_model(method='rp', arg_times=1, epochs=60, fname='ECG200'):
     x_train, y_train, x_test, y_test = loaddataset(fname)
-    # x_train, y_train = white_noise_augmentation(x_train, y_train, arg_times)
-    # x_test, y_test = white_noise_augmentation(x_test, y_test, arg_times)
+    x_train, y_train = white_noise_augmentation(x_train, y_train, arg_times)
+    # # x_test, y_test = white_noise_augmentation(x_test, y_test, arg_times)
 
-    # x_tr, x_te = transform_to_2D(method, x_train, x_test)
     print('start transforming ...')
     if method != 'comb':
         x_tr, x_te = transform_to_2D(method, x_train, x_test)
@@ -282,6 +284,9 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     print('normalized training set:', x_train_rgb.shape)
     print('normalized test set:', x_test_rgb.shape)
 
+    # x_train_rgb = x_train
+    # x_test_rgb = x_test
+
     Y_train = transform_label(y_train)
     Y_test = transform_label(y_test)
 
@@ -299,7 +304,7 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     # file.write(str(Y_test)+'\n')
 
     # two optimizers for choice
-    adam = keras.optimizers.Adam(lr=0.001)
+    adam = keras.optimizers.Adam(lr=0.0002)
     # sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
 
     model_new.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
@@ -308,7 +313,7 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     reduce_lr = LearningRateScheduler(lr_scheduler)
     # reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.00001)
     # # tensorboard = TensorBoard('logs/run_9')
-    checkpointer = ModelCheckpoint('../weights/vgg16_5000_simp.h5', monitor='val_acc', save_best_only=True)
+    checkpointer = ModelCheckpoint('../weights/vgg16_200_simp_txt.h5', monitor='val_acc', save_best_only=True)
 
     print("start training....")
     hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
@@ -316,7 +321,7 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
                          callbacks=[checkpointer, reduce_lr])
 
     # dump history dictionary
-    with open('../history/vgg16_ECG5000_simp', 'w+b') as file:
+    with open('../history/vgg16_ECG200_simp_txt', 'w+b') as file:
         pickle.dump(hist.history, file)
 
     return hist
@@ -412,10 +417,12 @@ def extractor(dataset='ECG200', method='rp'):
 
 t1 = time.time()
 
-hist = train_model(method='comb', arg_times=1, epochs=10, fname='ECG5000')
+hist = train_model(method='comb', arg_times=3, epochs=60, fname='ECG200')
 plt_acc_loss(hist)
 
 # extractor('ECG200', 'comb')
+
+# loaddataset()
 t2 = time.time()
 t = t2 - t1
 print('This takes ' + str(t) + ' seconds.')

@@ -1,0 +1,7 @@
+1. lr: 0.0002, after 20: 0.5*lr, after 35: 0.5*lr, 0.96
+2. lr: 0.0002, after 20: 0.5*lr, after 40: 0.2*lr, 0.95
+3. dense1(128), lr: 0.0002, after 20: 0.5*lr, after 35: 0.2*lr, 0.97
+FN: [92]; FP: [55, 75]; # of false_predictions: 3; # of true predictions: 97
+
+5. dense1(50), 0.93
+6. dense1(80), 0.95

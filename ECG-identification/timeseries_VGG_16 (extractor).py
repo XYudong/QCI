@@ -124,6 +124,20 @@ def VGG_16_new():
     # model_new.summary()
     return model_new
 
+def simpleNN():
+    img_input = Input(shape=(224, 224, 3), name='input')
+    x = Flatten(name='flatten')(img_input)
+    x = Dense(128, name='fc1')(x)
+    x = BatchNormalization()(x)
+    x = Dense(2, name='fc2')(x)
+    x = BatchNormalization()(x)
+    prediction = Activation('sigmoid', name='output')(x)
+
+    model = Model(inputs=img_input, outputs=prediction)
+
+    return model
+
+
 def data_normalization(x_train,x_test):
 
     x_train_mean = x_train.mean()
@@ -271,15 +285,19 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
 
 
 def extractor(dataset='ECG200', method='rp'):
-    model = VGG16(include_top=True, weights='imagenet')
+    # model = VGG16(include_top=True, weights='imagenet')
 
-    dense_1 = Dense(128, name='dense_1')(model.get_layer(name='flatten').output)
+    img_input = Input(shape=(224, 224, 3), name='input')
+    x = Flatten(name='flatten')(img_input)
+    model_fea = Model(inputs=img_input, outputs=x)
+
+    # dense_1 = Dense(128, name='dense_1')(model.get_layer(name='flatten').output)
     # Create a new model
-    model_fea = Model(inputs=model.layers[0].input, outputs=dense_1)
+    # model_fea = Model(inputs=model.layers[0].input, outputs=model.get_layer(name='flatten').output)
     # or inputs=model.inputs is also ok
 
-    print('new model outputs: ', model_fea.outputs)
-    # model_fea.summary()
+    # print('new model outputs: ', model_fea.outputs)
+    model_fea.summary()
     x_train, y_train, x_test, y_test = loaddataset(dataset)
 
     print('start transforming ...')
@@ -306,9 +324,9 @@ def extractor(dataset='ECG200', method='rp'):
     # fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
     # fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
 
-    path = 'dense128/'
-    fname1 = dataset + '_' + method + '_dense1_train.csv'
-    fname2 = dataset + '_' + method + '_dense1_test.csv'
+    path = './'
+    fname1 = dataset + '_' + method + '_fla_train.csv'
+    fname2 = dataset + '_' + method + '_fla_test.csv'
     print('start extracting ...')
     for i in range(x_train_rgb.shape[0]):
         img = x_train_rgb[i]
@@ -354,11 +372,11 @@ def extractor(dataset='ECG200', method='rp'):
     return True
 
 
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-# config.log_device_placement = True  # to log device placement (on which device the operation ran)
-sess = tf.Session(config=config)
-set_session(sess)  # set this TensorFlow session as the default session for Keras
+# config = tf.ConfigProto()
+# config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+# # config.log_device_placement = True  # to log device placement (on which device the operation ran)
+# sess = tf.Session(config=config)
+# set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 t1 = time.time()
 # hist = train_model(method='comb', arg_times=1, epochs=100, fname='ECG5000')

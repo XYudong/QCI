@@ -28,16 +28,16 @@ def transform(fea, n=40):
 
 
 def dump_data(dataset, method, train, test=[]):
-    root = 'dense128/'
+    root = 'simpleNN/'
     if test:
         df_tr = pd.DataFrame(train)
         df_te = pd.DataFrame(test)
-        df_tr.to_csv(root + dataset + '_' + method + '_2D_' + 'train.csv', header=None, index=None)
-        df_te.to_csv(root + dataset + '_' + method + '_2D_' + 'test.csv', header=None, index=None)
+        df_tr.to_csv(root + dataset + '_' + method + '_fla2D_' + 'train.csv', header=None, index=None)
+        df_te.to_csv(root + dataset + '_' + method + '_fla2D_' + 'test.csv', header=None, index=None)
     else:
         all_data = train
         df = pd.DataFrame(all_data)
-        df.to_csv(root + dataset + '_' + method + '_2D.csv', header=None, index=None)
+        df.to_csv(root + dataset + '_' + method + '_fla2D.csv', header=None, index=None)
     print('data dumped')
 
 
@@ -65,7 +65,7 @@ def pca_n(data):
     plt.plot(n, list_ratio, linewidth=4)
     plt.plot([0,15], [extra_tick, extra_tick], 'r--')
     plt.plot([15,15], [0,extra_tick], 'r--')
-    plt.title('PCA_ECG200')
+    plt.title('PCA_ECG5000')
     plt.xlabel('n_components')
     plt.ylabel('ratio of variance')
     # plt.xticks(list(range(0, 61, 5)))
@@ -143,7 +143,7 @@ def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
             test_poor = plt.scatter(X_tr_te[i+len(bool_tr), 0], X_tr_te[i+len(bool_tr), 1], c='r', s=20)
     # fp = plt.scatter(X_tr_te[[9+len(bool_tr)], 0], X_tr_te[[9+len(bool_tr)], 1],
     #                  c='purple', s=25)
-    plt.title(dataset+'_'+method+'_dense128_2D')
+    plt.title(dataset+'_'+method+'_flatten_2D')
     # plt.legend((train_good,train_poor,test_good,test_poor, fp), ('train_Normal','train_Ischemia',
     #                                                              'test_Normal','test_Ischemia', 'false_positive'))
     #
@@ -159,17 +159,17 @@ def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
 # name of data set
 dataset = 'ECG5000'
 method = 'comb'
-path = 'dense128/'
+path = 'simpleNN/'
 print('loading data')
-y_train, fea_train = load_data(path + dataset+'_'+method+'_dense1_train.csv')
-y_test, fea_test = load_data(path + dataset+'_'+method+'_dense1_test.csv')
+y_train, fea_train = load_data(path + dataset+'_'+method+'_fla_train.csv')
+y_test, fea_test = load_data(path + dataset+'_'+method+'_fla_test.csv')
 # y_test, fea_test = load_data('temp.txt')
 print('training set: ', fea_train.shape)
 print('test set: ', fea_test.shape)
 # print(y_train.shape)      # (140,)
 
-fea_tr_te = np.concatenate((fea_train, fea_test))
-y_tr_te = np.concatenate((y_train, y_test))
+# fea_tr_te = np.concatenate((fea_train, fea_test))
+# y_tr_te = np.concatenate((y_train, y_test))
 # print(fea_tr_te.shape)
 
 y_train = np.expand_dims(y_train, axis=1)
@@ -177,7 +177,7 @@ y_test = np.expand_dims(y_test, axis=1)
 y_tr_te = np.expand_dims(y_tr_te, axis=1)
 # print(y_train.shape)      # (140, 1)
 
-to_2d(fea_tr_te, y_tr_te, y_train, y_test)
+# to_2d(fea_tr_te, y_tr_te, y_train, y_test)
 
-# pca_n(fea_tr_te)
+pca_n(fea_test)
 
