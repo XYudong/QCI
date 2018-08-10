@@ -7,33 +7,45 @@ import pandas as pd
 
 def load_data(path):
     # load feature set
-    # data = np.loadtxt(path, dtype=float)
-    data = pd.read_csv(path, header=None)
-    # print(type(data))
-    # print(data.iloc[:, 0])
-    y = data.iloc[:, -1]    # labels-last
-    fea = data.iloc[:, 0:-1]
+    data = np.load(path)
+    # data = pd.read_csv(path, header=None)
+    # data = np.array(data)
+    y = data[:, 0]    # labels-first
+    fea = data[:, 1:]
     return y, fea
 
 
-def transform(fea, n=40):
+def do_pca(fea, n=20):
     # transform feature vector to 2D features
     print('applying PCA')
     pca = PCA(n_components=n, random_state=666)
     fea_pca = pca.fit_transform(fea)
-    print('applying TSNE')
+    print(fea_pca.shape)
+    return fea_pca
+
+
+def do_tsne(fea_pca, name):
+    print('\napplying TSNE')
     tsne = TSNE(n_components=2, random_state=66, init='random')
-    Y = tsne.fit_transform(fea_pca)
-    return Y
+    fea_2d = tsne.fit_transform(fea_pca)
+    print('save results of t-SNE')
+    np.save('ECG200/' + name+'_tsne_2d', fea_2d)
+    return fea_2d
 
 
-def dump_data(dataset, method, train, test=[]):
-    root = 'simpleNN/'
-    if test:
-        df_tr = pd.DataFrame(train)
-        df_te = pd.DataFrame(test)
-        df_tr.to_csv(root + dataset + '_' + method + '_fla2D_' + 'train.csv', header=None, index=None)
-        df_te.to_csv(root + dataset + '_' + method + '_fla2D_' + 'test.csv', header=None, index=None)
+def dump_data(dataset, method, train, test=np.array([])):
+    root = 'ECG200/'
+    if len(test):
+        # df_tr = pd.DataFrame(train)
+        # df_te = pd.DataFrame(test)
+        # df_tr.to_csv(root + dataset + '_' + method + '_fla2D_' + 'train.csv', header=None, index=None)
+        # df_te.to_csv(root + dataset + '_' + method + '_fla2D_' + 'test.csv', header=None, index=None)
+        fname1 = dataset + '_' + method + '_100train_pca20.npy'
+        fname2 = dataset + '_' + method + '_100test_pca20.npy'
+        print('train: ', train.shape)
+        print('test: ', test.shape)
+        np.save(root + fname1, train)
+        np.save(root + fname2, test)
     else:
         all_data = train
         df = pd.DataFrame(all_data)
@@ -76,7 +88,7 @@ def pca_n(data):
 
 
 def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
-    n_pca = 40
+    n_pca = 20
     print('transforming')
     # X_train = transform(fea_train, n_pca)
     # X_test = transform(fea_test, n_pca)
@@ -156,13 +168,16 @@ def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
     return None
 
 
+# def draw():
+
+
 # name of data set
-dataset = 'ECG5000'
+dataset = 'ECG200'
 method = 'comb'
-path = 'simpleNN/'
+path = 'ECG200/'
 print('loading data')
-y_train, fea_train = load_data(path + dataset+'_'+method+'_fla_train.csv')
-y_test, fea_test = load_data(path + dataset+'_'+method+'_fla_test.csv')
+y_train, fea_train = load_data(path + dataset+'_'+method+'_100train_vgg.npy')
+y_test, fea_test = load_data(path + dataset+'_'+method+'_100test_vgg.npy')
 # y_test, fea_test = load_data('temp.txt')
 print('training set: ', fea_train.shape)
 print('test set: ', fea_test.shape)
@@ -172,12 +187,26 @@ print('test set: ', fea_test.shape)
 # y_tr_te = np.concatenate((y_train, y_test))
 # print(fea_tr_te.shape)
 
-y_train = np.expand_dims(y_train, axis=1)
-y_test = np.expand_dims(y_test, axis=1)
-y_tr_te = np.expand_dims(y_tr_te, axis=1)
+
+# y_tr_te = np.expand_dims(y_tr_te, axis=1)
 # print(y_train.shape)      # (140, 1)
 
 # to_2d(fea_tr_te, y_tr_te, y_train, y_test)
 
-pca_n(fea_test)
+
+fea_train_new = do_pca(fea_train, 20)
+fea_test_new = do_pca(fea_test, 20)
+
+fea_all_new = np.concatenate((fea_train_new, fea_test_new))
+
+# y_train = np.expand_dims(y_train, axis=1)
+# y_test = np.expand_dims(y_test, axis=1)
+# Xy_train = np.concatenate((y_train, fea_train_new), axis=1)
+# Xy_test = np.concatenate((y_test, fea_test_new), axis=1)
+
+# dump_data(dataset, method, Xy_train, Xy_test)
+do_tsne(fea_all_new, 'ALL')       # only call this one time
+
+
+# pca_n(fea_test)
 

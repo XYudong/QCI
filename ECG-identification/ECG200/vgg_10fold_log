@@ -1,0 +1,3 @@
+8/9:
+1. Now, with 10-fold cross-validation, validation accuracy can reach 1.0. But TEST accuracy is around 0.92. 
+And, even some models with lower val_acc actually got a bit(0.01) higher TEST acc.  

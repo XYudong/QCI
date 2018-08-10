@@ -33,8 +33,8 @@ def readucr(path):
     #print(data[0:100])
     data = pd.read_csv(path, header=None)
     data = np.array(data)
-    Y = data[:, -1]
-    X = data[:, 0:-1]
+    Y = data[:, 0]
+    X = data[:, 1:]
     # print(X[0:100])
     return X, Y
 
@@ -47,12 +47,12 @@ def loaddataset(dataset='ECG200'):
         fname_tr = 'ECG5000_class1_2_train.csv'
         fname_te = 'ECG5000_class1_2_test.csv'
     elif dataset == 'ECG200':
-        fname_tr = 'ECG200_train.csv'
-        fname_te = 'ECG200_test.csv'
+        fname_tr = 'ECG200_TRAIN.txt'
+        fname_te = 'ECG200_TEST.txt'
     else:
         print('invalid dataset name')
         return None
-    x_train, y_train = readucr(root+dataset+'/'+dataset+'/' + fname_tr)
+    x_train, y_train = readucr(root + dataset+'/'+dataset+'/' + fname_tr)
     # x_train, y_train = readucr(root + '/ECG5000_class1_2_train_batch.csv')
     x_test, y_test = readucr(root + dataset+'/'+dataset+'/' + fname_te)
     return x_train, y_train, x_test, y_test
@@ -284,20 +284,21 @@ def train_model(method='rp', arg_times=1, epochs=50, fname='ECG200'):
     # return True
 
 
-def extractor(dataset='ECG200', method='rp'):
-    # model = VGG16(include_top=True, weights='imagenet')
+def extractor(dataset='ECG200', method='comb'):
+    model = VGG16(include_top=True, weights='imagenet')
 
-    img_input = Input(shape=(224, 224, 3), name='input')
-    x = Flatten(name='flatten')(img_input)
-    model_fea = Model(inputs=img_input, outputs=x)
+    # img_input = Input(shape=(224, 224, 3), name='input')
+    # x = Flatten(name='flatten')(img_input)
+    # model_fea = Model(inputs=img_input, outputs=x)
 
     # dense_1 = Dense(128, name='dense_1')(model.get_layer(name='flatten').output)
+
     # Create a new model
-    # model_fea = Model(inputs=model.layers[0].input, outputs=model.get_layer(name='flatten').output)
+    model_fea = Model(inputs=model.layers[0].input, outputs=model.get_layer(name='flatten').output)
     # or inputs=model.inputs is also ok
 
     # print('new model outputs: ', model_fea.outputs)
-    model_fea.summary()
+    # model_fea.summary()
     x_train, y_train, x_test, y_test = loaddataset(dataset)
 
     print('start transforming ...')
@@ -324,9 +325,9 @@ def extractor(dataset='ECG200', method='rp'):
     # fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
     # fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
 
-    path = './'
-    fname1 = dataset + '_' + method + '_fla_train.csv'
-    fname2 = dataset + '_' + method + '_fla_test.csv'
+    path = 'ECG200/'
+    fname1 = dataset + '_' + method + '_100train.npy'
+    fname2 = dataset + '_' + method + '_100test.npy'
     print('start extracting ...')
     for i in range(x_train_rgb.shape[0]):
         img = x_train_rgb[i]
@@ -335,18 +336,20 @@ def extractor(dataset='ECG200', method='rp'):
         # label
         label = [[y_train[i]]]
         # feature vector
-        fc1_features = model_fea.predict(img)
+        features = model_fea.predict(img)
         # print(fc1_features.shape)     #(1, 4096)
-        temp = np.concatenate((fc1_features, label), axis=1)    # label-last
+        temp = np.concatenate((label, features), axis=1)    # label-first
         if i == 0:
             ex = temp
         else:
             new = np.concatenate((ex, temp), axis=0)
             ex = new
         if i == x_train_rgb.shape[0] - 1:
-            df = pd.DataFrame(ex)
-            print('df shape of training: ', df.shape)
-            df.to_csv(path + fname1, mode='w+', header=None, index=None)
+            # df = pd.DataFrame(ex)
+            # print('df shape of training: ', df.shape)
+            # df.to_csv(path + fname1, mode='w+', header=None, index=None)
+            print(ex.shape)
+            np.save(path + fname1, ex)
     print('Features from Train: done')
 
     for i in range(x_test_rgb.shape[0]):
@@ -356,17 +359,19 @@ def extractor(dataset='ECG200', method='rp'):
         # label
         label = [[y_test[i]]]
         # feature vector
-        fc1_features = model_fea.predict(img)
+        features = model_fea.predict(img)
         # print(fc1_features.shape)     #(1, 4096)
-        temp = np.concatenate((fc1_features, label), axis=1)
+        temp = np.concatenate((label, features), axis=1)
         if i == 0:
             ex = temp
         else:
             new = np.concatenate((ex, temp), axis=0)
             ex = new
         if i == x_test_rgb.shape[0] - 1:
-            df = pd.DataFrame(ex)
-            df.to_csv(path + fname2, mode='w+', header=None, index=None)
+            # df = pd.DataFrame(ex)
+            # df.to_csv(path + fname2, mode='w+', header=None, index=None)
+            print(ex.shape)
+            np.save(path + fname2, ex)
     print('Features from Test: done')
 
     return True
@@ -382,7 +387,7 @@ t1 = time.time()
 # hist = train_model(method='comb', arg_times=1, epochs=100, fname='ECG5000')
 # plt_acc_loss(hist)
 
-extractor('ECG5000', 'comb')
+extractor('ECG200', 'comb')
 t2 = time.time()
 t = t2 - t1
 print('This takes ' + str(t) + ' seconds.')

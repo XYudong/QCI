@@ -1,13 +1,13 @@
 # CNN with 1D data
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'  # select to use which GPU
+# os.environ['CUDA_VISIBLE_DEVICES'] = '3'  # select to use which GPU
 import keras
 from keras import models
 from keras.models import Sequential
 
 from keras.models import Model
 from keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from keras.utils import np_utils
 from keras.layers import Input, Conv2D, BatchNormalization
 from keras.layers.core import Flatten, Dense, Dropout, Activation
@@ -17,6 +17,7 @@ from keras.optimizers import SGD
 from keras.callbacks import ReduceLROnPlateau, LearningRateScheduler, TensorBoard, ModelCheckpoint
 from keras.preprocessing import image
 from pyts.image import GASF, MTF, RecurrencePlots
+keras.backend.set_image_data_format('channels_last')
 
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
@@ -36,7 +37,7 @@ def readucr(path):
     # print(data[0:100])
     data = pd.read_csv(path, header=None)
     data = np.array(data)
-    print(data.dtype)
+    # print(data.dtype)
     Y = data[:, 0]      # for .txt files
     X = data[:, 1:]
     # print(X[0:100])
@@ -97,7 +98,7 @@ def VGG_16_new():
     #     print(layer, layer.trainable)
 
     # rebuild the model
-    # pool5 = Flatten(name='flatten')(model.outputs)        # this doesn't work
+    # pool5 = Flatten(name='flatten')(model.outputs)        # this doesn't work!!
     pool5 = Flatten(name='flatten')(model.layers[-1].output)
 
     dense_1 = Dense(128, name='dense_1', kernel_regularizer=regularizers.l2(0.01))(pool5)
@@ -152,15 +153,15 @@ def simpleNN():
 def data_normalization(x_train, x_test):
     x_train_mean = x_train.mean()
     x_train_std = x_train.std()
-    x_train = (x_train - x_train_mean) / x_train_std
-    x_test = (x_test - x_train_mean) / x_train_std
+    x_train_norm = (x_train - x_train_mean) / x_train_std
+    x_test_norm = (x_test - x_train_mean) / x_train_std
 
-    return x_train, x_test
+    return x_train_norm, x_test_norm
 
 
 def plt_acc_loss(hist):
     # summarize history for accuracy
-    plt.figure(1, figsize=(8, 10))
+
     plt.subplot(211)
     plt.plot(hist.history['acc'], c='dodgerblue', linewidth=2)
     plt.plot(hist.history['val_acc'], c='r')
@@ -210,28 +211,24 @@ def prepare_data(pre_data, method):
     return x_rgb
 
 
-def transform_to_2D(method, x_train, x_test):
+def transform_to_2D(method, x_train):
     if method == 'gasf':
         gasf = GASF(image_size=x_train.shape[1] // 2, overlapping=False, scale=-1)
-        x_tr = gasf.fit_transform(x_train)
-        x_te = gasf.fit_transform(x_test)
+        x = gasf.fit_transform(x_train)
         print('applying GASF')
     elif method == 'mtf':
         mtf = MTF(image_size=x_train.shape[1], n_bins=4, quantiles='empirical', overlapping=False)
-        x_tr = mtf.fit_transform(x_train)
-        x_te = mtf.fit_transform(x_test)
+        x = mtf.fit_transform(x_train)
         print('applying MTF')
     elif method == 'rp':
         rp = RecurrencePlots(dimension=1, epsilon='percentage_points', percentage=10)
-        x_tr = rp.fit_transform(x_train)
-        x_te = rp.fit_transform(x_test)
+        x = rp.fit_transform(x_train)
         print('applying RP')
     else:
         print('wrong method')
-        x_tr = []
-        x_te = []
+        x = []
 
-    return x_tr, x_te
+    return x
 
 
 def transform_label(y):
@@ -246,95 +243,144 @@ def transform_label(y):
     return Y
 
 
+def kfold_idx(k, x_train, y_train):
+    # # folds = [train_idx, val_idx]
+    folds = StratifiedKFold(n_splits=k, random_state=55).split(x_train, y_train)
+    print('Initiate '+str(k)+' folds')
+    return folds
+
+
+def before_train(x, y, method):
+    print('start transforming ...')
+    if method != 'comb':
+        x_temp = transform_to_2D(method, x)
+    else:
+        x_temp = []
+        temp0 = transform_to_2D('rp', x)
+        x_temp.append(temp0)
+        temp0 = transform_to_2D('gasf', x)
+        x_temp.append(temp0)
+        temp0 = transform_to_2D('mtf', x)
+        x_temp.append(temp0)
+
+    print('to RGB ...')
+    x_rgb = prepare_data(x_temp, method)
+    Y = transform_label(y)
+
+    return x_rgb, Y
+
+
 def lr_scheduler(epoch, lr):
-    if epoch == 20:
+    if epoch == 15:
         lr = lr * 0.5
-    elif epoch == 35:
+    elif epoch == 25:
         lr = lr * 0.2
     return lr
 
 
 def train_model(method='rp', arg_times=1, epochs=60, fname='ECG200'):
     x_train, y_train, x_test, y_test = loaddataset(fname)
-    x_train, y_train = white_noise_augmentation(x_train, y_train, arg_times)
-    # # x_test, y_test = white_noise_augmentation(x_test, y_test, arg_times)
+    x_test, Y_test = before_train(x_test, y_test, method)
 
-    print('start transforming ...')
-    if method != 'comb':
-        x_tr, x_te = transform_to_2D(method, x_train, x_test)
-    else:
-        x_tr = []
-        x_te = []
-        temp0, temp1 = transform_to_2D('rp', x_train, x_test)
-        x_tr.append(temp0), x_te.append(temp1)
-        temp0, temp1 = transform_to_2D('gasf', x_train, x_test)
-        x_tr.append(temp0), x_te.append(temp1)
-        temp0, temp1 = transform_to_2D('mtf', x_train, x_test)
-        x_tr.append(temp0), x_te.append(temp1)
+    hists = []  # histories
+    x_test_rgb_all = []
+    folds = kfold_idx(10, x_train, y_train)
+    for j, (train_idx, val_idx) in enumerate(folds):
+        print('\n')
+        print('Cross-validation: ', j)
+        x_val = x_train[val_idx]
+        y_val = y_train[val_idx]
+        x_tr, y_tr = white_noise_augmentation(x_train[train_idx], y_train[train_idx], arg_times)
+        # # x_test, y_test = white_noise_augmentation(x_test, y_test, arg_times)
 
-    print('to RGB ...')
-    x_train_rgb = prepare_data(x_tr, method)
-    x_test_rgb = prepare_data(x_te, method)
+        # print('start transforming ...')
+        # if method != 'comb':
+        #     x_tr, x_te = transform_to_2D(method, x_train, x_test)
+        # else:
+        #     x_tr = []
+        #     x_te = []
+        #     temp0, temp1 = transform_to_2D('rp', x_train, x_test)
+        #     x_tr.append(temp0), x_te.append(temp1)
+        #     temp0, temp1 = transform_to_2D('gasf', x_train, x_test)
+        #     x_tr.append(temp0), x_te.append(temp1)
+        #     temp0, temp1 = transform_to_2D('mtf', x_train, x_test)
+        #     x_tr.append(temp0), x_te.append(temp1)
+        #
+        # print('to RGB ...')
+        # x_train_rgb = prepare_data(x_tr, method)
+        # x_test_rgb = prepare_data(x_te, method)
 
-    # (sample, row, column, channel), i.e.(100*arg_times,224,224,3)
-    # print('train set:', x_train_rgb.shape)
-    # print('test set:', x_test_rgb.shape)
+        # (sample, row, column, channel), i.e.(100*arg_times,224,224,3)
+        # print('train set:', x_train_rgb.shape)
+        # print('test set:', x_test_rgb.shape)
 
-    x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
-    print('normalized training set:', x_train_rgb.shape)
-    print('normalized test set:', x_test_rgb.shape)
+        x_train_rgb, Y_train = before_train(x_tr, y_tr, method)
+        x_val_rgb, Y_val = before_train(x_val, y_val, method)
 
-    # x_train_rgb = x_train
-    # x_test_rgb = x_test
+        x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test)
+        x_train_rgb, x_val_rgb = data_normalization(x_train_rgb, x_val_rgb)
+        print('normalized training set:', x_train_rgb.shape)
+        print('normalized validation set:', x_val_rgb.shape)
 
-    Y_train = transform_label(y_train)
-    Y_test = transform_label(y_test)
+        # Y_train = transform_label(y_train)
+        # Y_test = transform_label(y_test)
 
-    batch_size = min(int(x_train_rgb.shape[0] / 10), 16)
-    print('batch size: ', batch_size)
+        batch_size = min(int(x_train_rgb.shape[0] / 10), 16)
+        print('batch size: ', batch_size)
 
-    # create a model
-    # model_new = VGG_16_new()
-    model_new = simpleNN()
+        # create a model
+        model_new = VGG_16_new()
+        # model_new = simpleNN()
 
-    # print(x_train_rgb.shape, Y_train.shape)
-    # print(x_test_rgb.shape, Y_test.shape)
-    # file = open('debug_data', 'a+')
-    # file.write(str(Y_train)+'\n')
-    # file.write(str(Y_test)+'\n')
+        # two optimizers for choice
+        adam = keras.optimizers.Adam(lr=0.0002)
+        # sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
 
-    # two optimizers for choice
-    adam = keras.optimizers.Adam(lr=0.0002)
-    # sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
+        model_new.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    model_new.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
+        # callbacks
+        reduce_lr = LearningRateScheduler(lr_scheduler)
+        reduce_lr_plus = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.00001)
+        # # tensorboard = TensorBoard('logs/run_9')
+        checkpointer = ModelCheckpoint('../weights/vgg16_ECG200_fold'+str(j)+'_txt.h5',
+                                       monitor='val_acc', save_best_only=True)
 
-    # callbacks
-    reduce_lr = LearningRateScheduler(lr_scheduler)
-    # reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.00001)
-    # # tensorboard = TensorBoard('logs/run_9')
-    checkpointer = ModelCheckpoint('../weights/vgg16_200_simp_txt.h5', monitor='val_acc', save_best_only=True)
+        print("start training....")
+        hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
+                             verbose=2, validation_data=(x_val_rgb, Y_val),
+                             callbacks=[checkpointer, reduce_lr, reduce_lr_plus])
 
-    print("start training....")
-    hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
-                         verbose=2, validation_data=(x_test_rgb, Y_test),
-                         callbacks=[checkpointer, reduce_lr])
+        # dump history dictionary
+        with open('../history/vgg16_ECG200_fold'+str(j)+'_txt', 'w+b') as file:
+            pickle.dump(hist.history, file)
+        hists.append(hist)
+        [loss, acc] = model_new.evaluate(x_test_rgb, Y_test, batch_size=len(Y_test))
+        print('TEST loss: ', loss,)
+        print('TEST accuracy: ', acc)
+        x_test_rgb_all.append(x_test_rgb)
 
-    # dump history dictionary
-    with open('../history/vgg16_ECG200_simp_txt', 'w+b') as file:
-        pickle.dump(hist.history, file)
-
-    return hist
+    # save all the normalized x_test for later evaluation
+    x_test_rgb_all = np.array(x_test_rgb_all)
+    np.save('../history/x_test_norm.npy', x_test_rgb_all)
+    return hists
     # return True
 
 
-def extractor(dataset='ECG200', method='rp'):
+def extractor(dataset='ECG200', method='comb'):
     model = VGG16(include_top=True, weights='imagenet')
-    # Create a new model in order to get the feature vector from FC1
-    model_fea = Model(inputs=model.layers[0].input, outputs=model.get_layer(name='fc1').output)
+
+    # img_input = Input(shape=(224, 224, 3), name='input')
+    # x = Flatten(name='flatten')(img_input)
+    # model_fea = Model(inputs=img_input, outputs=x)
+
+    # dense_1 = Dense(128, name='dense_1')(model.get_layer(name='flatten').output)
+
+    # Create a new model
+    model_fea = Model(inputs=model.layers[0].input, outputs=model.get_layer(name='flatten').output)
     # or inputs=model.inputs is also ok
 
-    # model.summary()
+    # print('new model outputs: ', model_fea.outputs)
+    # model_fea.summary()
     x_train, y_train, x_test, y_test = loaddataset(dataset)
 
     print('start transforming ...')
@@ -352,19 +398,19 @@ def extractor(dataset='ECG200', method='rp'):
 
     print('to RGB ...')
     x_train_rgb = prepare_data(x_tr, method)
-    x_test_rgb = prepare_data(x_te, method)  # output array
+    x_test_rgb = prepare_data(x_te, method)     # output array
     # x_test_rgb = []
     x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test_rgb)
-    print(x_train_rgb.shape)  # (100,224,224,3) for ECG200
+    print(x_train_rgb.shape)     # (100,224,224,3) for ECG200
     print(x_test_rgb.shape)
 
-    # file = open(dataset+'_'+method+'_fc1_features_train.txt', 'w+')
-    # file = open('temp.txt', 'w+')
-    # file2 = open(dataset+'_'+method+'_fc1_features_test.txt', 'w+')
+    # fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
+    # fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
 
-    fname1 = dataset + '_' + method + '_fc1_class1_2_train.csv'
-    fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
-    print('start predicting ...')
+    path = 'ECG200/'
+    fname1 = dataset + '_' + method + '_100train.npy'
+    fname2 = dataset + '_' + method + '_100test.npy'
+    print('start extracting ...')
     for i in range(x_train_rgb.shape[0]):
         img = x_train_rgb[i]
         img = np.expand_dims(img, axis=0)
@@ -372,38 +418,42 @@ def extractor(dataset='ECG200', method='rp'):
         # label
         label = [[y_train[i]]]
         # feature vector
-        fc1_features = model_fea.predict(img)
+        features = model_fea.predict(img)
         # print(fc1_features.shape)     #(1, 4096)
-        temp = np.concatenate((fc1_features, label), axis=1)  # label-last
+        temp = np.concatenate((label, features), axis=1)    # label-first
         if i == 0:
             ex = temp
         else:
             new = np.concatenate((ex, temp), axis=0)
             ex = new
         if i == x_train_rgb.shape[0] - 1:
-            df = pd.DataFrame(ex)
-            df.to_csv(fname1, mode='w+', header=None, index=None)
+            # df = pd.DataFrame(ex)
+            # print('df shape of training: ', df.shape)
+            # df.to_csv(path + fname1, mode='w+', header=None, index=None)
+            print(ex.shape)
+            np.save(path + fname1, ex)
     print('Features from Train: done')
 
     for i in range(x_test_rgb.shape[0]):
-        # print('here')
         img = x_test_rgb[i]
         img = np.expand_dims(img, axis=0)
         img = preprocess_input(img)
         # label
         label = [[y_test[i]]]
         # feature vector
-        fc1_features = model_fea.predict(img)
+        features = model_fea.predict(img)
         # print(fc1_features.shape)     #(1, 4096)
-        temp = np.concatenate((fc1_features, label), axis=1)
+        temp = np.concatenate((label, features), axis=1)
         if i == 0:
             ex = temp
         else:
             new = np.concatenate((ex, temp), axis=0)
             ex = new
         if i == x_test_rgb.shape[0] - 1:
-            df = pd.DataFrame(ex)
-            df.to_csv(fname2, mode='w+', header=None, index=None)
+            # df = pd.DataFrame(ex)
+            # df.to_csv(path + fname2, mode='w+', header=None, index=None)
+            print(ex.shape)
+            np.save(path + fname2, ex)
     print('Features from Test: done')
 
     return True
@@ -417,8 +467,10 @@ def extractor(dataset='ECG200', method='rp'):
 
 t1 = time.time()
 
-hist = train_model(method='comb', arg_times=3, epochs=60, fname='ECG200')
-plt_acc_loss(hist)
+hists = train_model(method='comb', arg_times=3, epochs=40, fname='ECG200')
+for i, hist in enumerate(hists):
+    plt.figure(i+1, figsize=(8, 10))
+    plt_acc_loss(hist)
 
 # extractor('ECG200', 'comb')
 
