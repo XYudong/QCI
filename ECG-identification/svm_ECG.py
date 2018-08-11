@@ -16,18 +16,18 @@ def load_data(path):
     return y, fea_2D
 
 
-def train_model(X_train, X_test, y_train, y_test, dataset):
+def train_model(X_train, y_train, dataset):
     print('start training')
     if dataset == 'ECG200':
-        C = 60
-        gamma = 0.0002
+        C = 0.1
+        gamma = 80
     elif dataset == 'ECG5000':
         C = 5
         gamma = 0.1
     else:
         print('invalid dataset name')
         return None
-    clf = svm.SVC(C=C, gamma=gamma, random_state=66)
+    clf = svm.SVC(kernel='linear', C=C, gamma=gamma, random_state=66)
     clf.fit(X_train, y_train)
     return clf
 
@@ -70,7 +70,7 @@ def revise_labels(diffs, TP, TN):
     return diffs
 
 
-def plot_data(groups, dataset, name, acc=[], ms=5):
+def plot_data(groups, dataset, name, acc=[], ms=5, shape='o'):
     if dataset == 'ECG200':
         for tag, group in groups:
             if tag == 0.1:
@@ -81,9 +81,9 @@ def plot_data(groups, dataset, name, acc=[], ms=5):
                 tag = 'FP'
             elif tag == 2:
                 tag = 'FN'
-            plt.plot(group.x, group.y, 'o', label=tag, ms=ms)
+            plt.plot(group.x, group.y, shape, label=tag, ms=ms)
             if acc:
-                plt.title(dataset + '_SVM_' + name+'_accuracy: ' + str(acc))
+                plt.title(dataset + '_SVM_' + name+' TEST_acc: ' + str(acc))
             else:
                 plt.title(dataset + '_SVM_' + name)
         plt.legend()
@@ -93,7 +93,7 @@ def plot_data(groups, dataset, name, acc=[], ms=5):
                 tag = 'class 1'
             elif tag == 2:
                 tag = 'class 2'
-            plt.plot(group.x, group.y, 'o', label=tag, ms=ms)
+            plt.plot(group.x, group.y, shape, label=tag, ms=ms)
             plt.title(dataset + '_SVM_' + name+'_accuracy: ' + str(acc))
         plt.legend()
     else:
@@ -135,8 +135,8 @@ def dump_model(dataset, model):
 root = 'ECG200/'
 dataset = 'ECG200'
 method = 'comb'
-fname1 = dataset + '_' + method + '_100train_pca20.npy'
-fname2 = dataset + '_' + method + '_100test_pca20.npy'
+fname1 = dataset + '_' + method + '_100train_pca30.npy'
+fname2 = dataset + '_' + method + '_100test_pca30.npy'
 y_tr, X_tr = load_data(root + fname1)
 y_te, X_te = load_data(root + fname2)
 
@@ -146,7 +146,7 @@ y_te, X_te = load_data(root + fname2)
 # X_2D_tr, X_2D_te, y_tr, y_te = train_test_split(X_2D, y, test_size=0.25, random_state=55)
 
 
-clf = train_model(X_tr, X_te, y_tr, y_te, dataset)
+clf = train_model(X_tr, y_tr, dataset)
 dump_model(dataset, clf)
 train_acc = get_score(clf, X_tr, y_tr, 'Training')
 test_acc = get_score(clf, X_te, y_te, 'Test')
@@ -164,17 +164,17 @@ diff_tr = revise_labels(diff_tr, TP_tr, TN_tr)
 diff_te = revise_labels(diff_te, TP_te, TN_te)
 
 # load t-SNE coordinates of TEST set
-coord_te = np.load(root + 'TEST_tsne_2d.npy')      # (100, 2)
-coord_tr = np.load(root + 'TRAIN_tsne_2d.npy')
+# coord_te = np.load(root + 'TEST_tsne_2d.npy')      # (100, 2)
+# coord_tr = np.load(root + 'TRAIN_tsne_2d.npy')
 coord_all = np.load(root + 'ALL_tsne_2d.npy')
 
-# plot TEST data points
-df = pd.DataFrame(dict(x=coord_te[:, 0], y=coord_te[:, 1], label=diff_te))
-groups_te = df.groupby('label')
-
-# plot TRAIN data points
-df_tr = pd.DataFrame(dict(x=coord_tr[:, 0], y=coord_tr[:, 1], label=diff_tr))
-groups_tr = df_tr.groupby('label')
+# # plot TEST data points
+# df = pd.DataFrame(dict(x=coord_te[:, 0], y=coord_te[:, 1], label=diff_te))
+# groups_te = df.groupby('label')
+#
+# # plot TRAIN data points
+# df_tr = pd.DataFrame(dict(x=coord_tr[:, 0], y=coord_tr[:, 1], label=diff_tr))
+# groups_tr = df_tr.groupby('label')
 
 # plot ALL data points
 df_all_1 = pd.DataFrame(dict(x=coord_all[0:100, 0], y=coord_all[0:100, 1], label=diff_tr))
@@ -182,13 +182,13 @@ df_all_2 = pd.DataFrame(dict(x=coord_all[100:, 0], y=coord_all[100:, 1], label=d
 groups_all_1 = df_all_1.groupby('label')
 groups_all_2 = df_all_2.groupby('label')
 
-f1 = plt.figure(1)
-plot_data(groups_tr, dataset, 'TRAIN', train_acc)
-f2 = plt.figure(2)
-plot_data(groups_te, dataset, 'TEST', test_acc)
+# f1 = plt.figure(1)
+# plot_data(groups_tr, dataset, 'TRAIN', train_acc)
+# f2 = plt.figure(2)
+# plot_data(groups_te, dataset, 'TEST', test_acc)
 f3 = plt.figure(3)
-plot_data(groups_all_1, dataset, 'ALL', ms=4)
-plot_data(groups_all_2, dataset, 'ALL', ms=6)       # TEST set
+plot_data(groups_all_1, dataset, 'ALL', ms=4, shape='o')       # TRAIN set
+plot_data(groups_all_2, dataset, 'ALL', ms=6, shape='^', acc=test_acc)       # TEST set
 
 plt.show()
 

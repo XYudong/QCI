@@ -33,15 +33,15 @@ def do_tsne(fea_pca, name):
     return fea_2d
 
 
-def dump_data(dataset, method, train, test=np.array([])):
+def dump_data(dataset, method, n_comp, train, test=np.array([])):
     root = 'ECG200/'
     if len(test):
         # df_tr = pd.DataFrame(train)
         # df_te = pd.DataFrame(test)
         # df_tr.to_csv(root + dataset + '_' + method + '_fla2D_' + 'train.csv', header=None, index=None)
         # df_te.to_csv(root + dataset + '_' + method + '_fla2D_' + 'test.csv', header=None, index=None)
-        fname1 = dataset + '_' + method + '_100train_pca20.npy'
-        fname2 = dataset + '_' + method + '_100test_pca20.npy'
+        fname1 = dataset + '_' + method + '_100train_pca'+str(n_comp)+'.npy'
+        fname2 = dataset + '_' + method + '_100test_pca'+str(n_comp)+'.npy'
         print('train: ', train.shape)
         print('test: ', test.shape)
         np.save(root + fname1, train)
@@ -53,7 +53,7 @@ def dump_data(dataset, method, train, test=np.array([])):
     print('data dumped')
 
 
-def pca_n(data):
+def pca_n(data, dataset, n):
     # plot the curve of n_components vs variance ratio
     list_ratio = []
     for n_pca in range(0, 10):
@@ -68,16 +68,16 @@ def pca_n(data):
         ratio_mat = pca.explained_variance_ratio_
         sum_ratio = np.sum(ratio_mat)
         list_ratio.append(sum_ratio)
-        if n_pca == 15:
+        if n_pca == n:
             extra_tick = sum_ratio
 
-    n = list(range(0,10))+list(range(10,50,5))
+    xx = list(range(0, 10))+list(range(10, 50, 5))
 
     f1 = plt.figure(1)
-    plt.plot(n, list_ratio, linewidth=4)
-    plt.plot([0,15], [extra_tick, extra_tick], 'r--')
-    plt.plot([15,15], [0,extra_tick], 'r--')
-    plt.title('PCA_ECG5000')
+    plt.plot(xx, list_ratio, linewidth=4)
+    plt.plot([0, n], [extra_tick, extra_tick], 'r--')
+    plt.plot([n, n], [0, extra_tick], 'r--')
+    plt.title('PCA_'+dataset)
     plt.xlabel('n_components')
     plt.ylabel('ratio of variance')
     # plt.xticks(list(range(0, 61, 5)))
@@ -175,6 +175,7 @@ def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
 dataset = 'ECG200'
 method = 'comb'
 path = 'ECG200/'
+n_comp = 30     # n_component of PCA
 print('loading data')
 y_train, fea_train = load_data(path + dataset+'_'+method+'_100train_vgg.npy')
 y_test, fea_test = load_data(path + dataset+'_'+method+'_100test_vgg.npy')
@@ -191,22 +192,20 @@ print('test set: ', fea_test.shape)
 # y_tr_te = np.expand_dims(y_tr_te, axis=1)
 # print(y_train.shape)      # (140, 1)
 
-# to_2d(fea_tr_te, y_tr_te, y_train, y_test)
 
-
-fea_train_new = do_pca(fea_train, 20)
-fea_test_new = do_pca(fea_test, 20)
+fea_train_new = do_pca(fea_train, n_comp)
+fea_test_new = do_pca(fea_test, n_comp)
 
 fea_all_new = np.concatenate((fea_train_new, fea_test_new))
 
-# y_train = np.expand_dims(y_train, axis=1)
-# y_test = np.expand_dims(y_test, axis=1)
-# Xy_train = np.concatenate((y_train, fea_train_new), axis=1)
-# Xy_test = np.concatenate((y_test, fea_test_new), axis=1)
+y_train = np.expand_dims(y_train, axis=1)
+y_test = np.expand_dims(y_test, axis=1)
+Xy_train = np.concatenate((y_train, fea_train_new), axis=1)
+Xy_test = np.concatenate((y_test, fea_test_new), axis=1)
 
-# dump_data(dataset, method, Xy_train, Xy_test)
+dump_data(dataset, method, n_comp, Xy_train, Xy_test)
 do_tsne(fea_all_new, 'ALL')       # only call this one time
 
 
-# pca_n(fea_test)
+# pca_n(fea_train, dataset, n_comp)
 

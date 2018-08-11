@@ -1,6 +1,6 @@
 # CNN with 1D data
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '3'  # select to use which GPU
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'  # select to use which GPU
 import keras
 from keras import models
 from keras.models import Sequential
@@ -317,15 +317,15 @@ def train_model(method='rp', arg_times=1, epochs=60, fname='ECG200'):
         x_train_rgb, Y_train = before_train(x_tr, y_tr, method)
         x_val_rgb, Y_val = before_train(x_val, y_val, method)
 
-        x_train_rgb, x_test_rgb = data_normalization(x_train_rgb, x_test)
-        x_train_rgb, x_val_rgb = data_normalization(x_train_rgb, x_val_rgb)
-        print('normalized training set:', x_train_rgb.shape)
-        print('normalized validation set:', x_val_rgb.shape)
+        x_train_norm, x_test_norm = data_normalization(x_train_rgb, x_test)
+        x_train_norm, x_val_norm = data_normalization(x_train_rgb, x_val_rgb)
+        print('normalized training set:', x_train_norm.shape)
+        print('normalized validation set:', x_val_norm.shape)
 
         # Y_train = transform_label(y_train)
         # Y_test = transform_label(y_test)
 
-        batch_size = min(int(x_train_rgb.shape[0] / 10), 16)
+        batch_size = min(int(x_train_norm.shape[0] / 10), 16)
         print('batch size: ', batch_size)
 
         # create a model
@@ -346,18 +346,18 @@ def train_model(method='rp', arg_times=1, epochs=60, fname='ECG200'):
                                        monitor='val_acc', save_best_only=True)
 
         print("start training....")
-        hist = model_new.fit(x_train_rgb, Y_train, batch_size=batch_size, epochs=epochs,
-                             verbose=2, validation_data=(x_val_rgb, Y_val),
+        hist = model_new.fit(x_train_norm, Y_train, batch_size=batch_size, epochs=epochs,
+                             verbose=2, validation_data=(x_val_norm, Y_val),
                              callbacks=[checkpointer, reduce_lr, reduce_lr_plus])
 
         # dump history dictionary
         with open('../history/vgg16_ECG200_fold'+str(j)+'_txt', 'w+b') as file:
             pickle.dump(hist.history, file)
         hists.append(hist)
-        [loss, acc] = model_new.evaluate(x_test_rgb, Y_test, batch_size=len(Y_test))
+        [loss, acc] = model_new.evaluate(x_test_norm, Y_test, batch_size=len(Y_test))
         print('TEST loss: ', loss,)
         print('TEST accuracy: ', acc)
-        x_test_rgb_all.append(x_test_rgb)
+        x_test_rgb_all.append(x_test_norm)
 
     # save all the normalized x_test for later evaluation
     x_test_rgb_all = np.array(x_test_rgb_all)
@@ -408,8 +408,8 @@ def extractor(dataset='ECG200', method='comb'):
     # fname2 = dataset + '_' + method + '_fc1_class1_2_test.csv'
 
     path = 'ECG200/'
-    fname1 = dataset + '_' + method + '_100train.npy'
-    fname2 = dataset + '_' + method + '_100test.npy'
+    fname1 = dataset + '_' + method + '_100train_vgg.npy'
+    fname2 = dataset + '_' + method + '_100test_vgg.npy'
     print('start extracting ...')
     for i in range(x_train_rgb.shape[0]):
         img = x_train_rgb[i]
