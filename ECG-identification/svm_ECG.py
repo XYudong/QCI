@@ -19,8 +19,8 @@ def load_data(path):
 def train_model(X_train, y_train, dataset):
     print('start training')
     if dataset == 'ECG200':
-        C = 0.1
-        gamma = 80
+        C = 5
+        gamma = 0.01
     elif dataset == 'ECG5000':
         C = 5
         gamma = 0.1
@@ -82,6 +82,7 @@ def plot_data(groups, dataset, name, acc=[], ms=5, shape='o'):
             elif tag == 2:
                 tag = 'FN'
             plt.plot(group.x, group.y, shape, label=tag, ms=ms)
+            plt.xlabel('o for TRAIN, ^ for TEST')
             if acc:
                 plt.title(dataset + '_SVM_' + name+' TEST_acc: ' + str(acc))
             else:
@@ -135,8 +136,8 @@ def dump_model(dataset, model):
 root = 'ECG200/'
 dataset = 'ECG200'
 method = 'comb'
-fname1 = dataset + '_' + method + '_100train_pca30.npy'
-fname2 = dataset + '_' + method + '_100test_pca30.npy'
+fname1 = dataset + '_' + method + '_100train_pca5.npy'
+fname2 = dataset + '_' + method + '_100test_pca5.npy'
 y_tr, X_tr = load_data(root + fname1)
 y_te, X_te = load_data(root + fname2)
 

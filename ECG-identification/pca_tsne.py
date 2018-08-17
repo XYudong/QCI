@@ -175,7 +175,7 @@ def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
 dataset = 'ECG200'
 method = 'comb'
 path = 'ECG200/'
-n_comp = 30     # n_component of PCA
+n_comp = 5     # n_component of PCA
 print('loading data')
 y_train, fea_train = load_data(path + dataset+'_'+method+'_100train_vgg.npy')
 y_test, fea_test = load_data(path + dataset+'_'+method+'_100test_vgg.npy')
@@ -198,14 +198,18 @@ fea_test_new = do_pca(fea_test, n_comp)
 
 fea_all_new = np.concatenate((fea_train_new, fea_test_new))
 
+# combine label vector with feature matrix
 y_train = np.expand_dims(y_train, axis=1)
 y_test = np.expand_dims(y_test, axis=1)
 Xy_train = np.concatenate((y_train, fea_train_new), axis=1)
 Xy_test = np.concatenate((y_test, fea_test_new), axis=1)
 
 dump_data(dataset, method, n_comp, Xy_train, Xy_test)
-do_tsne(fea_all_new, 'ALL')       # only call this one time
 
+# do_tsne(fea_all_new, 'ALL')       # only call this one time
 
 # pca_n(fea_train, dataset, n_comp)
+
+
+
 

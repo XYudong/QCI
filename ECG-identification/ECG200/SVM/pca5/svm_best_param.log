@@ -1,0 +1,8 @@
+nohup: ignoring input
+start training
+('kernel: ', 'linear')
+The best parameters are {'C': 0.001, 'gamma': 100} with a score of 0.79
+('kernel: ', 'rbf')
+The best parameters are {'C': 5, 'gamma': 0.01} with a score of 0.83
+('kernel: ', 'poly')
+The best parameters are {'C': 0.001, 'gamma': 1} with a score of 0.80

@@ -33,27 +33,31 @@ def load_dataset(dataset='ECG200'):
     return x_test, y_test
 
 
-dataset = 'ECG5000'
-# x_te, y_te = load_dataset(dataset)
-# TODO: test the speed between pd.read_csv and np.load
-
-
-aa = np.ones((100, 25000), dtype=float)
-# print(type(aa))
-fname = 'test_data'
-
-# t1 = time.time()
-# np.save(fname, aa)
-# t2 = time.time()
-# print(t2-t1)
+# dataset = 'ECG5000'
+# # x_te, y_te = load_dataset(dataset)
+# # TODO: test the speed between pd.read_csv and np.load
 #
-# t1 = time.time()
-# df = pd.DataFrame(aa)
-# df.to_csv(fname+'.csv', mode='w+', header=None, index=None)
-# t2 = time.time()
-# print(t2-t1)
+#
+# aa = np.ones((100, 25000), dtype=float)
+# # print(type(aa))
+# fname = 'test_data'
+#
+# # t1 = time.time()
+# # np.save(fname, aa)
+# # t2 = time.time()
+# # print(t2-t1)
+# #
+# # t1 = time.time()
+# # df = pd.DataFrame(aa)
+# # df.to_csv(fname+'.csv', mode='w+', header=None, index=None)
+# # t2 = time.time()
+# # print(t2-t1)
+#
+# aa = np.array([1,2,3,4,5])
+# a = [0,1,2]
+#
+# print(aa[a])
 
-aa = np.array([1,2,3,4,5])
-a = [0,1,2]
-
-print(aa[a])
+a = np.array([1,2,5,2,3])
+idx = [i for i, x in enumerate(a) if x==2]
+print(idx)

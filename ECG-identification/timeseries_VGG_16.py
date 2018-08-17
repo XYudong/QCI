@@ -273,8 +273,8 @@ def before_train(x, y, method):
 def lr_scheduler(epoch, lr):
     if epoch == 15:
         lr = lr * 0.5
-    elif epoch == 25:
-        lr = lr * 0.2
+    elif epoch == 30:
+        lr = lr * 0.5
     return lr
 
 
@@ -291,7 +291,7 @@ def train_model(method='rp', arg_times=1, epochs=60, fname='ECG200'):
         x_val = x_train[val_idx]
         y_val = y_train[val_idx]
         x_tr, y_tr = white_noise_augmentation(x_train[train_idx], y_train[train_idx], arg_times)
-        # # x_test, y_test = white_noise_augmentation(x_test, y_test, arg_times)
+        x_val, y_val = white_noise_augmentation(x_val, y_val, 3)
 
         # print('start transforming ...')
         # if method != 'comb':
@@ -467,7 +467,7 @@ def extractor(dataset='ECG200', method='comb'):
 
 t1 = time.time()
 
-hists = train_model(method='comb', arg_times=3, epochs=40, fname='ECG200')
+hists = train_model(method='comb', arg_times=3, epochs=50, fname='ECG200')
 for i, hist in enumerate(hists):
     plt.figure(i+1, figsize=(8, 10))
     plt_acc_loss(hist)

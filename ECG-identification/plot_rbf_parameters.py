@@ -78,8 +78,8 @@ from sklearn.datasets import load_iris
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import GridSearchCV
 
-# import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 # Utility function to move the midpoint of a colormap to be around
 # the values of interest.
@@ -100,7 +100,7 @@ class MidpointNormalize(Normalize):
 
 # Load and prepare data set
 # dataset for grid search
-data = np.load('ECG200/ECG200_comb_100train_pca30.npy')
+data = np.load('ECG200/ECG200_comb_100train_pca5.npy')
 y_pca = data[:, 0]
 X_pca = data[:, 1:]
 
@@ -131,8 +131,8 @@ print('start training')
 # C_range = np.logspace(-2, 10, 13)
 # gamma_range = np.logspace(-6, 2, 13)
 kernel_opt = ['linear', 'rbf', 'poly']
-C_range = [0.001, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 80, 100]
-gamma_range = [100, 50, 30, 10, 5, 1, 0.1, 0.01, 0.005, 0.001, 0.0003, 0.0002, 0.0001, 0.00005]
+C_range = [0.0001, 0.001, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 80, 100]
+gamma_range = [100, 80, 50, 30, 10, 1, 0.1, 0.01, 0.001, 0.0003, 0.0001, 0.00005]
 param_grid = dict(gamma=gamma_range, C=C_range)
 # cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
 
@@ -140,6 +140,7 @@ for kernel in kernel_opt:
     grid = GridSearchCV(SVC(kernel=kernel), param_grid=param_grid, cv=10, scoring='accuracy')
     grid.fit(X_pca, y_pca)
 
+    print("kernel: ", kernel)
     print("The best parameters are %s with a score of %0.2f"
           % (grid.best_params_, grid.best_score_))
 
@@ -208,5 +209,6 @@ for kernel in kernel_opt:
     plt.title('Validation accuracy with '+kernel+' kernel: '+str(grid.best_score_))
 
     plt.savefig('heat_map_' + kernel)
-    plt.show()
+
+plt.show()
 
