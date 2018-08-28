@@ -1,6 +1,0 @@
-6/14/2018
-Transfer 1D ECG signal data to 2D. 
-Then using this 2D data to train NN to make prediction. 
-	--paper: https://arxiv.org/pdf/1409.1556.pdf
-	--code: https://media.readthedocs.org/pdf/pyts/latest/pyts.pdf
-	--dataset:http://timeseriesclassification.com/description.php?Dataset=ECG200 

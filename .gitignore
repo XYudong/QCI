@@ -5,4 +5,5 @@ CMakeCache.txt
 *.txt
 *.csv
 *.h5
+.png
 logs

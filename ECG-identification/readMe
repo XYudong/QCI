@@ -1,0 +1,22 @@
+1. Files in ECG-identification/ECG200/ are from experiments using 10-fold cross-validation. The file "ECG200vgg_output_2.log" is the output log while training, validation, and testing VGG16 on ECG200.
+
+"ECG200_comb_100test_vgg.npy" is feature vectors of ECG200 test data. They are extracted using VGG16 as an extractor. You can check their dimension to see from where they are extracted out.
+
+"ECG200_comb_100test_pca20.npy" is feature vectors after doing PCA with n_components(20) on feature vectors in "ECG200_comb_100test_vgg.npy". This is to say, each row has length 20. 
+
+2. Files in ECG-identification/figures/100_100_latest are from experiments on ECG200 with 100:100 original dataset split. The figure ECG200_txt_3.png is history of the experiment achieved the 0.97 test accuracy without cross-validation. Accordingly, in QCI/weights/ folder, "vgg16_200_txt_3.h5" is the saved model. In QCI/history/, "vgg16_ECG200_txt_3" is the history file.
+
+3. files in ECG-identification/dense50 and /dense128 are from experiments adding only one dense layer after cutting the top of the original VGG16 architecture.
+
+4. "comb" means combination of three transformation methods: RP, MTF, GASF while forming a "rgb" image. 
+
+5. timeseries_VGG_16.py is the one you may want to use to train VGG16.
+Work flow of it with cross-validation:
+    1. doing 10-fold cross-validation on TRAIN set. Augment 9/10 of TRAIN set.
+    2. then using the statistics of augmented part to normalize all of data(i.e. train, val, test set).  
+    3. train the model on the train set. then save the model with the highest val_acc.
+    4. evaluate current model on normalized TEST set(100 samples).
+    5. go to 1 
+    This loop will be done for 10 times as it is 10-fold cross-validation.
+
+

@@ -88,6 +88,7 @@ def pca_n(data, dataset, n):
 
 
 def to_2d(fea_tr_te, y_tr_te, y_train, y_test):
+    """not used for now"""
     n_pca = 20
     print('transforming')
     # X_train = transform(fea_train, n_pca)
