@@ -16,7 +16,6 @@ def load_data(path):
 
 
 def do_pca(fea, n=20):
-    # transform feature vector to 2D features
     print('applying PCA')
     pca = PCA(n_components=n, random_state=666)
     fea_pca = pca.fit_transform(fea)
@@ -25,6 +24,7 @@ def do_pca(fea, n=20):
 
 
 def do_tsne(fea_pca, name):
+    # transform feature vector to 2D features
     print('\napplying TSNE')
     tsne = TSNE(n_components=2, random_state=66, init='random')
     fea_2d = tsne.fit_transform(fea_pca)

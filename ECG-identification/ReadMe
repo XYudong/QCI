@@ -1,4 +1,4 @@
-1. Files in ECG-identification/ECG200/ are from experiments using 10-fold cross-validation. The file "ECG200vgg_output_2.log" is the output log while training, validation, and testing VGG16 on ECG200.
+1. Files in ECG-identification/ECG200/ are from experiments using 10-fold cross-validation. The file "ECG200vgg_output_2.log" is the output log while training, validating, and testing VGG16 on ECG200.
 
 "ECG200_comb_100test_vgg.npy" is feature vectors of ECG200 test data. They are extracted using VGG16 as an extractor. You can check their dimension to see from where they are extracted out.
 

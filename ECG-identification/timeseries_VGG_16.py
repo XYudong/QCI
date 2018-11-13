@@ -102,7 +102,7 @@ def VGG_16_new():
     pool5 = Flatten(name='flatten')(model.layers[-1].output)
 
     dense_1 = Dense(128, name='dense_1', kernel_regularizer=regularizers.l2(0.01))(pool5)
-    bn_1 = BatchNormalization()(dense_1)
+    bn_1 = BatchNormalization()(dense_1)    # normalize the inputs of nonlinear layer(activation layer)
     act_1 = Activation('relu')(bn_1)
     d1 = Dropout(0.5, name='drop1')(act_1)
 
@@ -325,6 +325,7 @@ def train_model(method='rp', arg_times=1, epochs=60, fname='ECG200'):
         # Y_train = transform_label(y_train)
         # Y_test = transform_label(y_test)
 
+        # mini-batch gradient descent
         batch_size = min(int(x_train_norm.shape[0] / 10), 16)
         print('batch size: ', batch_size)
 
@@ -354,6 +355,7 @@ def train_model(method='rp', arg_times=1, epochs=60, fname='ECG200'):
         with open('../history/vgg16_ECG200_fold'+str(j)+'_txt', 'w+b') as file:
             pickle.dump(hist.history, file)
         hists.append(hist)
+        # Testing
         [loss, acc] = model_new.evaluate(x_test_norm, Y_test, batch_size=len(Y_test))
         print('TEST loss: ', loss,)
         print('TEST accuracy: ', acc)
